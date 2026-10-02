@@ -1,0 +1,380 @@
+{
+  "genere_le": "2026-09-20T16:54:39.537Z",
+  "environnement": {
+    "ffmpeg": true,
+    "ffprobe": true,
+    "resolution_test": "240x426",
+    "fps": 30
+  },
+  "resultats": [
+    {
+      "cible_secondes": 37,
+      "scenes": 7,
+      "timeline_total_secondes": 39.452,
+      "timeline_valide": true,
+      "timeline_controle_limite_artificielle": "pass",
+      "temps_rendu_ms": 4706,
+      "mp4": "/tmp/conquistador-verify-37s-8IJMxl/output.mp4",
+      "taille_octets": 232477,
+      "duration": 39.433333,
+      "ffprobe": {
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "duration": "39.433333",
+        "size": "232477",
+        "video_codec": "h264",
+        "width": 240,
+        "height": 426,
+        "avg_frame_rate": "30/1",
+        "audio_codec": "aac",
+        "audio_sample_rate": "44100",
+        "has_video": true,
+        "has_audio": true
+      },
+      "sous_titres": {
+        "entries": 14,
+        "brules": true
+      },
+      "qc_ok": true,
+      "qc_checks": [
+        {
+          "id": "fichier_existe",
+          "status": "pass",
+          "detail": "Fichier present (232477 octets)."
+        },
+        {
+          "id": "taille_fichier",
+          "status": "pass",
+          "detail": "Taille du fichier : 232477 octets."
+        },
+        {
+          "id": "conteneur_valide",
+          "status": "pass",
+          "detail": "Conteneur lisible par ffprobe."
+        },
+        {
+          "id": "duree_positive",
+          "status": "pass",
+          "detail": "Duree mesuree : 39.43s."
+        },
+        {
+          "id": "piste_video",
+          "status": "pass",
+          "detail": "Piste video presente (codec h264)."
+        },
+        {
+          "id": "piste_audio",
+          "status": "pass",
+          "detail": "Piste audio presente (codec aac)."
+        },
+        {
+          "id": "resolution",
+          "status": "pass",
+          "detail": "Resolution : 240x426."
+        },
+        {
+          "id": "resolution_attendue",
+          "status": "pass",
+          "detail": "Resolution conforme au format demande (240x426)."
+        },
+        {
+          "id": "ratio",
+          "status": "pass",
+          "detail": "Ratio mesure 0.563 (attendu ~0.563)."
+        },
+        {
+          "id": "fps",
+          "status": "pass",
+          "detail": "30.00 images/seconde."
+        },
+        {
+          "id": "duree_coherente",
+          "status": "pass",
+          "detail": "Duree 39.43s vs attendue ~37s (timeline du manifeste)."
+        },
+        {
+          "id": "assets_presents",
+          "status": "pass",
+          "detail": "Les 7 scene(s) attendue(s) ont toutes un asset associe."
+        }
+      ],
+      "ecart_secondes": 2.433
+    },
+    {
+      "cible_secondes": 45,
+      "scenes": 8,
+      "timeline_total_secondes": 47.8,
+      "timeline_valide": true,
+      "timeline_controle_limite_artificielle": "pass",
+      "temps_rendu_ms": 5471,
+      "mp4": "/tmp/conquistador-verify-45s-F5ghPs/output.mp4",
+      "taille_octets": 271784,
+      "duration": 47.733333,
+      "ffprobe": {
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "duration": "47.733333",
+        "size": "271784",
+        "video_codec": "h264",
+        "width": 240,
+        "height": 426,
+        "avg_frame_rate": "30/1",
+        "audio_codec": "aac",
+        "audio_sample_rate": "44100",
+        "has_video": true,
+        "has_audio": true
+      },
+      "sous_titres": {
+        "entries": 16,
+        "brules": true
+      },
+      "qc_ok": true,
+      "qc_checks": [
+        {
+          "id": "fichier_existe",
+          "status": "pass",
+          "detail": "Fichier present (271784 octets)."
+        },
+        {
+          "id": "taille_fichier",
+          "status": "pass",
+          "detail": "Taille du fichier : 271784 octets."
+        },
+        {
+          "id": "conteneur_valide",
+          "status": "pass",
+          "detail": "Conteneur lisible par ffprobe."
+        },
+        {
+          "id": "duree_positive",
+          "status": "pass",
+          "detail": "Duree mesuree : 47.73s."
+        },
+        {
+          "id": "piste_video",
+          "status": "pass",
+          "detail": "Piste video presente (codec h264)."
+        },
+        {
+          "id": "piste_audio",
+          "status": "pass",
+          "detail": "Piste audio presente (codec aac)."
+        },
+        {
+          "id": "resolution",
+          "status": "pass",
+          "detail": "Resolution : 240x426."
+        },
+        {
+          "id": "resolution_attendue",
+          "status": "pass",
+          "detail": "Resolution conforme au format demande (240x426)."
+        },
+        {
+          "id": "ratio",
+          "status": "pass",
+          "detail": "Ratio mesure 0.563 (attendu ~0.563)."
+        },
+        {
+          "id": "fps",
+          "status": "pass",
+          "detail": "30.00 images/seconde."
+        },
+        {
+          "id": "duree_coherente",
+          "status": "pass",
+          "detail": "Duree 47.73s vs attendue ~45s (timeline du manifeste)."
+        },
+        {
+          "id": "assets_presents",
+          "status": "pass",
+          "detail": "Les 8 scene(s) attendue(s) ont toutes un asset associe."
+        }
+      ],
+      "ecart_secondes": 2.733
+    },
+    {
+      "cible_secondes": 60,
+      "scenes": 9,
+      "timeline_total_secondes": 63.153,
+      "timeline_valide": true,
+      "timeline_controle_limite_artificielle": "pass",
+      "temps_rendu_ms": 7023,
+      "mp4": "/tmp/conquistador-verify-60s-MoFM6y/output.mp4",
+      "taille_octets": 328120,
+      "duration": 63.195011,
+      "ffprobe": {
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "duration": "63.195011",
+        "size": "328120",
+        "video_codec": "h264",
+        "width": 240,
+        "height": 426,
+        "avg_frame_rate": "30/1",
+        "audio_codec": "aac",
+        "audio_sample_rate": "44100",
+        "has_video": true,
+        "has_audio": true
+      },
+      "sous_titres": {
+        "entries": 18,
+        "brules": true
+      },
+      "qc_ok": true,
+      "qc_checks": [
+        {
+          "id": "fichier_existe",
+          "status": "pass",
+          "detail": "Fichier present (328120 octets)."
+        },
+        {
+          "id": "taille_fichier",
+          "status": "pass",
+          "detail": "Taille du fichier : 328120 octets."
+        },
+        {
+          "id": "conteneur_valide",
+          "status": "pass",
+          "detail": "Conteneur lisible par ffprobe."
+        },
+        {
+          "id": "duree_positive",
+          "status": "pass",
+          "detail": "Duree mesuree : 63.20s."
+        },
+        {
+          "id": "piste_video",
+          "status": "pass",
+          "detail": "Piste video presente (codec h264)."
+        },
+        {
+          "id": "piste_audio",
+          "status": "pass",
+          "detail": "Piste audio presente (codec aac)."
+        },
+        {
+          "id": "resolution",
+          "status": "pass",
+          "detail": "Resolution : 240x426."
+        },
+        {
+          "id": "resolution_attendue",
+          "status": "pass",
+          "detail": "Resolution conforme au format demande (240x426)."
+        },
+        {
+          "id": "ratio",
+          "status": "pass",
+          "detail": "Ratio mesure 0.563 (attendu ~0.563)."
+        },
+        {
+          "id": "fps",
+          "status": "pass",
+          "detail": "30.00 images/seconde."
+        },
+        {
+          "id": "duree_coherente",
+          "status": "pass",
+          "detail": "Duree 63.20s vs attendue ~60s (timeline du manifeste)."
+        },
+        {
+          "id": "assets_presents",
+          "status": "pass",
+          "detail": "Les 9 scene(s) attendue(s) ont toutes un asset associe."
+        }
+      ],
+      "ecart_secondes": 3.195
+    },
+    {
+      "cible_secondes": 90,
+      "scenes": 10,
+      "timeline_total_secondes": 93.5,
+      "timeline_valide": true,
+      "timeline_controle_limite_artificielle": "pass",
+      "temps_rendu_ms": 9137,
+      "mp4": "/tmp/conquistador-verify-90s-Q53Woi/output.mp4",
+      "taille_octets": 613305,
+      "duration": 93.530998,
+      "ffprobe": {
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "duration": "93.530998",
+        "size": "613305",
+        "video_codec": "h264",
+        "width": 240,
+        "height": 426,
+        "avg_frame_rate": "30/1",
+        "audio_codec": "aac",
+        "audio_sample_rate": "44100",
+        "has_video": true,
+        "has_audio": true
+      },
+      "sous_titres": {
+        "entries": 20,
+        "brules": true
+      },
+      "qc_ok": true,
+      "qc_checks": [
+        {
+          "id": "fichier_existe",
+          "status": "pass",
+          "detail": "Fichier present (613305 octets)."
+        },
+        {
+          "id": "taille_fichier",
+          "status": "pass",
+          "detail": "Taille du fichier : 613305 octets."
+        },
+        {
+          "id": "conteneur_valide",
+          "status": "pass",
+          "detail": "Conteneur lisible par ffprobe."
+        },
+        {
+          "id": "duree_positive",
+          "status": "pass",
+          "detail": "Duree mesuree : 93.53s."
+        },
+        {
+          "id": "piste_video",
+          "status": "pass",
+          "detail": "Piste video presente (codec h264)."
+        },
+        {
+          "id": "piste_audio",
+          "status": "pass",
+          "detail": "Piste audio presente (codec aac)."
+        },
+        {
+          "id": "resolution",
+          "status": "pass",
+          "detail": "Resolution : 240x426."
+        },
+        {
+          "id": "resolution_attendue",
+          "status": "pass",
+          "detail": "Resolution conforme au format demande (240x426)."
+        },
+        {
+          "id": "ratio",
+          "status": "pass",
+          "detail": "Ratio mesure 0.563 (attendu ~0.563)."
+        },
+        {
+          "id": "fps",
+          "status": "pass",
+          "detail": "30.00 images/seconde."
+        },
+        {
+          "id": "duree_coherente",
+          "status": "pass",
+          "detail": "Duree 93.53s vs attendue ~90s (timeline du manifeste)."
+        },
+        {
+          "id": "assets_presents",
+          "status": "pass",
+          "detail": "Les 10 scene(s) attendue(s) ont toutes un asset associe."
+        }
+      ],
+      "ecart_secondes": 3.531
+    }
+  ],
+  "conclusion": "TOUS les rendus 37/45/60/90 s sont valides et verifies par ffprobe."
+}

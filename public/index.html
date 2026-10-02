@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Conquistador OS — Poste de commandement</title>
+<meta name="description" content="Tableau de bord de Conquistador OS, le systeme agentique de Savoir Utile." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body data-mode="silencio">
+<div class="app-shell">
+  <div class="scrim" id="scrim"></div>
+  <nav class="sidebar" id="sidebar" aria-label="Navigation principale">
+    <div class="sidebar-brand">
+      <svg class="compass" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="24" cy="24" r="21" stroke="#c99a3d" stroke-width="1.5"/>
+        <circle cx="24" cy="24" r="2.2" fill="#c99a3d"/>
+        <path d="M24 6 L27 21 L24 24 L21 21 Z" fill="#e6b653"/>
+        <path d="M24 42 L21 27 L24 24 L27 27 Z" fill="#5a4522"/>
+        <path d="M6 24 L21 21 L24 24 L21 27 Z" fill="#8a6a2f"/>
+        <path d="M42 24 L27 27 L24 24 L27 21 Z" fill="#8a6a2f"/>
+      </svg>
+      <div class="wordmark">CONQUISTADOR OS<small>Savoir Utile</small></div>
+    </div>
+    <ul class="nav-list" id="navList" role="tablist">
+      <li role="presentation"><button class="nav-item" data-nav="vue-generale" type="button" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span class="nav-item-label">Vue générale</span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="contenu" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg><span class="nav-item-label">Contenu</span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="videos" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="13" height="14" rx="1.5"/><path d="M16 9.5l5-3v11l-5-3z"/></svg><span class="nav-item-label">Vidéos</span><span class="nav-dot" id="navDotVideos" hidden></span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="reseaux-sociaux" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.6 10.6l6.8-3.2M8.6 13.4l6.8 3.2"/></svg><span class="nav-item-label">Réseaux sociaux</span><span class="nav-dot" id="navDotSocial" hidden></span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="prospects" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.8-3.6 3-5.4 5.5-5.4s4.7 1.8 5.5 5.4"/><circle cx="18" cy="8.5" r="2.4"/><path d="M16 14.6c2.6.3 4 1.9 4.6 4.5"/></svg><span class="nav-item-label">Prospects</span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="commercial" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 17l5-6 4 3 6-8"/><path d="M14 5h4v4"/></svg><span class="nav-item-label">Commercial</span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="statistiques" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V10M11 20V4M18 20v-7"/></svg><span class="nav-item-label">Statistiques</span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="objectifs" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg><span class="nav-item-label">Objectifs</span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="ia" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></svg><span class="nav-item-label">IA</span><span class="nav-dot" id="navDotIa" hidden></span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="systeme" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.4"/></svg><span class="nav-item-label">Système</span><span class="nav-dot" id="navDotSysteme" hidden></span></button></li>
+      <li role="presentation"><button class="nav-item" data-nav="parametres" type="button" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h10M4 17h6M18 7a2 2 0 100-4 2 2 0 000 4zM10 17a2 2 0 100 4 2 2 0 000-4zM16 17h4"/></svg><span class="nav-item-label">Paramètres</span><span class="nav-dot" id="navDotParametres" hidden></span></button></li>
+    </ul>
+    <div class="sidebar-foot">
+      <div class="sidebar-status"><span class="dot" id="statusDot"></span><span id="statusText">connexion...</span></div>
+    </div>
+  </nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="icon-btn sidebar-toggle-mobile" id="sidebarToggleBtn" type="button" aria-label="Ouvrir la navigation" aria-controls="sidebar" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <button class="topbar-search-trigger" id="searchTriggerBtn" type="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span>Rechercher dans Conquistador OS...</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+      <div class="topbar-actions">
+        <span class="mode-badge mode-badge-silencio" id="modeBadge" title="Mode operationnel actuel (source : backend)">SILENCIO</span>
+        <button class="icon-btn" id="notifBtn" type="button" aria-label="Centre de notifications" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9a6 6 0 1112 0c0 5 1.5 6.5 1.5 6.5h-15S6 14 6 9z"/><path d="M10 19a2 2 0 004 0"/></svg>
+          <span class="badge-dot" id="notifBadge" hidden></span>
+        </button>
+      </div>
+    </header>
+
+    <div class="key-bar">
+      <label for="apiKeyInput">Cle API</label>
+      <input id="apiKeyInput" type="password" placeholder="x-conquistador-key (necessaire pour creer/approuver)" autocomplete="off" />
+      <button class="station-action" id="saveKeyBtn" type="button">Enregistrer</button>
+      <span class="form-msg" id="apiKeyMsg" aria-live="polite"></span>
+    </div>
+
+    <div class="view-content">
+
+  <!-- VUE GENERALE -->
+  <section data-view="vue-generale" class="view-active">
+    <div class="view-heading">
+      <div><h1>Vue générale</h1><p>Premier coup d'oeil sur l'état de Conquistador OS</p></div>
+    </div>
+    <div class="overview-mode-banner">
+      <div><strong id="ovModeLabel">Mode : chargement...</strong><br/><span id="ovModeDesc"></span></div>
+    </div>
+    <div class="overview-grid" id="overviewGrid">
+      <div class="overview-card"><span class="ov-label">Approbations en attente</span><span class="ov-value" id="ovApprobations">—</span></div>
+      <div class="overview-card"><span class="ov-label">Tâches récentes</span><span class="ov-value" id="ovTaches">—</span></div>
+      <div class="overview-card"><span class="ov-label">Erreurs récentes</span><span class="ov-value" id="ovErreurs">—</span></div>
+      <div class="overview-card accent"><span class="ov-label">Prospects</span><span class="ov-value" id="ovProspects">—</span></div>
+      <div class="overview-card accent"><span class="ov-label">Ventes (semaine)</span><span class="ov-value" id="ovVentes">—</span></div>
+      <div class="overview-card accent"><span class="ov-label">Objectif CA (semaine)</span><span class="ov-value" id="ovObjectifCa">—</span></div>
+    </div>
+  </section>
+
+  <!-- ONBOARDING EN SIX ETAPES -->
+  <section class="station onboarding" id="onboardingPanel" aria-labelledby="onboardingTitle" data-view="vue-generale">
+    <div class="station-head">
+      <div>
+        <h2 id="onboardingTitle"><span class="station-eyebrow">START</span> Mise en route en six etapes</h2>
+        <p class="dim-note">Le wizard vérifie la configuration réelle. Il ne stocke aucun secret et ne simule aucune connexion sociale.</p>
+      </div>
+      <button class="station-action" id="onboardingHideBtn" type="button">Masquer</button>
+    </div>
+    <div class="wizard-meta"><span id="onboardingProgressLabel">Etape 1 sur 6</span><span id="onboardingStepSummary">Connexion et memoire</span></div>
+    <div class="wizard-track" aria-hidden="true"><span id="onboardingProgressBar"></span></div>
+    <div class="wizard-layout">
+      <nav class="wizard-steps" aria-label="Etapes d'onboarding">
+        <button type="button" class="wizard-step active" data-onboarding-step="1"><span>01</span><strong>Supabase</strong><small>Memoire persistante</small></button>
+        <button type="button" class="wizard-step" data-onboarding-step="2"><span>02</span><strong>IA</strong><small>Cascade Gemini → Mock</small></button>
+        <button type="button" class="wizard-step" data-onboarding-step="3"><span>03</span><strong>Facebook / Instagram</strong><small>Connecteur social</small></button>
+        <button type="button" class="wizard-step" data-onboarding-step="4"><span>04</span><strong>TikTok</strong><small>Connecteur social</small></button>
+        <button type="button" class="wizard-step" data-onboarding-step="5"><span>05</span><strong>WhatsApp</strong><small>Canal et API</small></button>
+        <button type="button" class="wizard-step" data-onboarding-step="6"><span>06</span><strong>YouTube</strong><small>OAuth Google</small></button>
+      </nav>
+      <div class="wizard-content">
+        <article class="wizard-panel active" data-onboarding-panel="1">
+          <span class="wizard-kicker">ETAPE 01 · MEMOIRE</span>
+          <h3>Supabase comme memoire persistante</h3>
+          <p>Le navigateur ne reçoit jamais la clé service_role. Définissez <code>SUPABASE_URL</code> et <code>SUPABASE_SERVICE_KEY</code> côté Netlify, puis utilisez le diagnostic pour confirmer le backend actif.</p>
+          <div class="wizard-status" id="onboardingSupabaseStatus">Verification en cours...</div>
+          <button class="station-action primary wizard-check-btn" data-onboarding-check="health" type="button">Verifier la memoire</button>
+        </article>
+        <article class="wizard-panel" data-onboarding-panel="2" hidden>
+          <span class="wizard-kicker">ETAPE 02 · INTELLIGENCE</span>
+          <h3>Une cascade IA unique et lisible</h3>
+          <p>Ordre de bascule officiel : <strong>Gemini → Groq → OpenRouter → Mock</strong>. Les clés sont uniquement des variables serveur. Le fournisseur réellement utilisé apparaît dans le journal d’exécution.</p>
+          <div class="wizard-status" id="onboardingAiStatus">Verification en cours...</div>
+          <button class="station-action primary wizard-check-btn" data-onboarding-check="health" type="button">Verifier les fournisseurs</button>
+        </article>
+        <article class="wizard-panel" data-onboarding-panel="3" hidden>
+          <span class="wizard-kicker">ETAPE 03 · SOCIAL</span>
+          <h3>Facebook / Instagram</h3>
+          <p>Aucun accès n’est inventé. Tant qu’aucun connecteur réel n’est enregistré, les deux plateformes restent <strong>NON CONNECTÉ</strong> et les actions externes restent préparées ou soumises à approbation.</p>
+          <div class="wizard-status" id="onboardingMetaStatus">Etat en cours...</div>
+          <div class="meta-connect-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+            <button class="station-action primary" id="metaConnectBtn" type="button">Connecter via Meta</button>
+            <button class="station-action" id="metaTestBtn" type="button">Tester les tokens</button>
+            <button class="station-action danger" id="metaDisconnectBtn" type="button">Déconnecter</button>
+          </div>
+          <span class="form-msg" id="metaActionMsg" aria-live="polite"></span>
+          <p class="dim-note">L’autorisation ouvre la page officielle Meta. Aucun token n’est demandé ni stocké dans ce navigateur.</p>
+          <button class="station-action primary wizard-check-btn" data-onboarding-check="connectors" type="button">Verifier Facebook / Instagram</button>
+        </article>
+        <article class="wizard-panel" data-onboarding-panel="4" hidden>
+          <span class="wizard-kicker">ETAPE 04 · SOCIAL</span>
+          <h3>TikTok</h3>
+          <p>La connexion ouvre uniquement l’autorisation officielle TikTok. La publication vidéo passe par le Content Posting API et reste soumise à l’approbation humaine et au kill switch.</p>
+          <div class="wizard-status" id="onboardingTikTokStatus">Etat en cours...</div>
+          <div class="meta-connect-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+            <button class="station-action primary" id="tiktokConnectBtn" type="button">Connecter via TikTok</button>
+            <button class="station-action" id="tiktokTestBtn" type="button">Tester le compte</button>
+            <button class="station-action" id="tiktokReadBtn" type="button">Lire mes vidéos</button>
+            <button class="station-action danger" id="tiktokDisconnectBtn" type="button">Déconnecter</button>
+          </div>
+          <span class="form-msg" id="tiktokActionMsg" aria-live="polite"></span>
+          <div class="subpanel tiktok-publications-panel">
+            <div class="subpanel-head"><h4>Correspondance des publications TikTok</h4><button class="station-action" id="refreshTiktokPublicationsBtn" type="button">Actualiser les statuts</button></div>
+            <p class="dim-note">Après une soumission approuvée, TikTok renvoie un <code>publish_id</code>. L’état final doit être relu ici ; une soumission acceptée n’est pas encore une publication confirmée.</p>
+            <div id="tiktokPublicationsList" class="entries-list"><div class="empty-row">Aucune soumission TikTok suivie.</div></div>
+          </div>
+          <p class="dim-note">Une publication publique peut rester limitée jusqu’à l’audit TikTok. Les vidéos sont envoyées depuis une URL HTTPS autorisée ; le dashboard ne demande aucun mot de passe ni token.</p>
+          <button class="station-action primary wizard-check-btn" data-onboarding-check="connectors" type="button">Verifier TikTok</button>
+        </article>
+        <article class="wizard-panel" data-onboarding-panel="5" hidden>
+          <span class="wizard-kicker">ETAPE 05 · CANAL</span>
+          <h3>WhatsApp</h3>
+          <p>La chaîne WhatsApp peut être référencée sans prétendre disposer d’une API d’envoi. Une action non connectée reste explicitement <strong>NON EXECUTEE</strong>.</p>
+          <div class="wizard-status" id="onboardingWhatsappStatus">Etat en cours...</div>
+          <button class="station-action primary wizard-check-btn" data-onboarding-check="connectors" type="button">Verifier WhatsApp</button>
+        </article>
+        <article class="wizard-panel" data-onboarding-panel="6" hidden>
+          <span class="wizard-kicker">ETAPE 06 · SOCIAL</span>
+          <h3>YouTube</h3>
+          <p>La connexion ouvre uniquement l’autorisation officielle Google. Aucun mot de passe, code SMS ou token ne doit être envoyé dans le chat. La première étape vérifie la chaîne ; elle ne publie rien automatiquement.</p>
+          <div class="wizard-status" id="onboardingYoutubeStatus">Etat en cours...</div>
+          <div class="meta-connect-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+            <button class="station-action primary" id="youtubeConnectBtn" type="button">Connecter via Google</button>
+            <button class="station-action" id="youtubeTestBtn" type="button">Tester la chaîne</button>
+            <button class="station-action danger" id="youtubeDisconnectBtn" type="button">Déconnecter</button>
+          </div>
+          <span class="form-msg" id="youtubeActionMsg" aria-live="polite"></span>
+          <p class="dim-note">Le secret OAuth et les tokens restent côté Netlify/Supabase. Le tableau de bord n’affiche que l’état, le nom public de la chaîne et les capacités réellement accordées.</p>
+          <button class="station-action primary wizard-check-btn" data-onboarding-check="connectors" type="button">Verifier YouTube</button>
+        </article>
+        <div class="wizard-actions">
+          <button class="station-action" id="onboardingPrevBtn" type="button">Precedente</button>
+          <button class="station-action primary" id="onboardingNextBtn" type="button">Suivante</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ETAT SYSTEME / DIAGNOSTIC -->
+  <section class="station" data-view="systeme">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">00</span> Etat systeme</h2>
+      <button class="station-action primary" id="runDiagnosticsBtn">Lancer le diagnostic</button>
+    </div>
+    <div class="panel entry-list" id="diagnosticsList"><div class="empty">Cliquez sur "Lancer le diagnostic" pour verifier configuration, Supabase, IA, assets, connecteurs et securite.</div></div>
+  </section>
+
+  <!-- KILL SWITCH -->
+  <section class="station" data-view="systeme">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">00b</span> Mode securise (kill switch)</h2>
+    </div>
+    <div class="panel killswitch-panel" id="killSwitchPanel">
+      <div class="killswitch-status">
+        <span class="dot" id="killSwitchDot"></span>
+        <span id="killSwitchText">verification...</span>
+      </div>
+      <button class="station-action danger" id="killSwitchToggleBtn">Activer le mode securise</button>
+    </div>
+    <p class="dim-note">En mode securise, aucune publication, aucun message et aucune action externe irreversible ne peut s'executer — les analyses et preparations continuent normalement. La reactivation des actions externes exige une confirmation explicite.</p>
+  </section>
+
+  <!-- APPROBATIONS -->
+  <section class="station" data-view="vue-generale">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">01</span> Approbations en attente</h2>
+      <button class="station-action" id="refreshApprovals">Actualiser</button>
+    </div>
+    <div class="panel entry-list" id="approvalsList"><div class="empty">Chargement...</div></div>
+  </section>
+
+  <!-- NOUVELLE TACHE -->
+  <section class="station" data-view="systeme">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">02</span> Lancer une tache</h2>
+    </div>
+    <div class="panel task-form">
+      <div class="row">
+        <div>
+          <label for="taskType">Type de tache</label>
+          <select id="taskType"></select>
+        </div>
+        <div>
+          <label for="taskPriority">Priorite</label>
+          <select id="taskPriority">
+            <option value="normale">Normale</option>
+            <option value="basse">Basse</option>
+            <option value="haute">Haute</option>
+            <option value="urgente">Urgente</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="taskInput">Entree (JSON)</label>
+        <textarea id="taskInput">{}</textarea>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="station-action primary" id="launchTaskBtn">Executer maintenant</button>
+        <span class="form-msg" id="taskFormMsg"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PIPELINE VIDEO GUIDE -->
+  <section class="station video-engine-station" data-view="videos">
+    <div class="station-head">
+      <div>
+        <h2><span class="station-eyebrow">02a</span> Video Engine — génération réelle</h2>
+        <p class="dim-note">Pipeline complet : idée/script → scènes → assets visuels → voix → sous-titres → composition FFmpeg → contrôle qualité réel → MP4. Aucune vidéo n’est jamais déclarée terminée si le fichier n’est pas réellement valide et récupérable.</p>
+      </div>
+      <button class="station-action" id="refreshVideoJobsBtn" type="button">Actualiser</button>
+    </div>
+    <div class="panel task-form video-engine-form">
+      <div class="row">
+        <div>
+          <label for="videoJobSubject">Sujet (génération IA du script)</label>
+          <input id="videoJobSubject" type="text" placeholder="Ex. Comment Samuel a retrouvé du travail" autocomplete="off" />
+        </div>
+        <div>
+          <label for="videoJobFormat">Format cible</label>
+          <select id="videoJobFormat">
+            <option value="9:16" selected>9:16 — court vertical (1080×1920)</option>
+            <option value="16:9">16:9 — horizontal (1920×1080)</option>
+            <option value="1:1">1:1 — carré (1080×1080)</option>
+            <option value="4:5">4:5 — portrait (1080×1350)</option>
+          </select>
+        </div>
+        <div>
+          <label for="videoJobTargetDuration">Durée cible (secondes, optionnel — 20/30/37/45/60/75/90)</label>
+          <input id="videoJobTargetDuration" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex. 45" autocomplete="off" />
+        </div>
+      </div>
+      <label class="check-line" for="videoJobUseManifest"><input id="videoJobUseManifest" type="checkbox" /> Fournir un manifeste JSON déjà prêt (scènes/timeline) plutôt qu’un sujet</label>
+      <div id="videoJobManifestWrap" hidden>
+        <label for="videoJobManifest">Manifeste JSON (scenes[], timeline[] — voir docs/VIDEO_ENGINE.md)</label>
+        <textarea id="videoJobManifest" spellcheck="false" placeholder='{"scenes":[{"id":"scene_01","personnage":"Samuel","description":"...","prompt_final":"...","voix_off_scene":"..."}],"timeline":[{"scene_id":"scene_01","start_seconds":0,"end_seconds":4}]}'></textarea>
+      </div>
+      <div class="pipeline-notice"><strong>Réalisme :</strong> la génération d’images IA et de voix off dépend de services externes (réseau, clés API) — indisponibles, le pipeline retombe honnêtement sur le Graphic Engine (visuels générés par code, sans IA) et signale VOICE_UNAVAILABLE plutôt que d’inventer un résultat. Un rendu sans stockage durable configuré (Supabase Storage) reste valide localement mais ne peut pas être marqué terminé — voir docs/VIDEO_ENGINE.md.</div>
+      <div class="pipeline-actions">
+        <button class="station-action primary" id="createVideoJobBtn" type="button">Générer la vidéo</button>
+        <span class="form-msg" id="videoJobMsg" aria-live="polite"></span>
+      </div>
+    </div>
+    <div class="panel entry-list" id="videoJobsList" aria-live="polite"><div class="empty">Aucun job vidéo pour le moment.</div></div>
+  </section>
+
+  <section class="station video-pipeline-station" data-view="videos">
+    <div class="station-head">
+      <div>
+        <h2><span class="station-eyebrow">02b</span> Pipeline vidéo contrôlé</h2>
+        <p class="dim-note">L’agent créatif prépare le contenu, l’agent qualité transmet ses corrections, puis le contrôleur vidéo bloque toute preuve insuffisante.</p>
+      </div>
+    </div>
+    <div class="panel task-form video-pipeline-form">
+      <div class="row">
+        <div>
+          <label for="videoPipelineSubject">Sujet ou objectif</label>
+          <input id="videoPipelineSubject" type="text" placeholder="Ex. réussir son entretien d’embauche" autocomplete="off" />
+        </div>
+        <div>
+          <label for="videoPipelineUrl">URL HTTPS de la vidéo rendue</label>
+          <input id="videoPipelineUrl" type="url" placeholder="https://.../video.mp4" autocomplete="off" />
+        </div>
+      </div>
+      <div>
+        <label for="videoPipelineManifest">Manifeste vidéo JSON (timeline minutée, voix, scènes, sous-titres, CTA)</label>
+        <textarea id="videoPipelineManifest" spellcheck="false" placeholder='{"duration_seconds":45,"width":1080,"height":1920,"mime_type":"video/mp4","platform":"tiktok","script":"...","cta":"Abonne-toi au profil","brand_style":"Savoir Utile officiel","timeline":[{"scene_id":"scene_01","start_seconds":0,"end_seconds":45,"image_ref":"image-01","voice_start_seconds":0,"voice_end_seconds":45,"subtitles":[{"start_seconds":0,"end_seconds":45,"text":"..."}]}],"transitions":[{"type":"zoom_lent","at_seconds":12}]}'></textarea>
+      </div>
+      <label class="check-line" for="videoPipelineAutoRevise"><input id="videoPipelineAutoRevise" type="checkbox" checked /> Transmettre automatiquement jusqu’à deux cycles de corrections à l’agent créatif</label>
+      <div class="pipeline-notice"><strong>Règle de sécurité :</strong> le pipeline prépare et contrôle ; il ne publie jamais directement. Une inspection audiovisuelle réelle, l’approbation humaine et les garde-fous externes restent nécessaires.</div>
+      <div class="pipeline-actions">
+        <button class="station-action primary" id="runVideoPipelineBtn" type="button">Lancer le pipeline vidéo</button>
+        <span class="form-msg" id="videoPipelineMsg" aria-live="polite"></span>
+      </div>
+      <div class="pipeline-result-host" id="videoPipelineResult" aria-live="polite"><div class="empty">Aucun contrôle vidéo lancé pour le moment.</div></div>
+    </div>
+  </section>
+
+  <!-- ETATS DE CONTENU ET REVUES VIDEO -->
+  <section class="station content-review-station" data-view="videos">
+    <div class="station-head">
+      <div><h2><span class="station-eyebrow">02b</span> États du contenu et revues vidéo</h2><p class="dim-note">Cette vue reflète les tâches et contrôles réellement persistés. Une vidéo validée reste soumise à l’approbation humaine avant toute publication.</p></div>
+      <button class="station-action" id="refreshVideoReviewsBtn" type="button">Actualiser</button>
+    </div>
+    <div class="content-state-grid" id="contentStateGrid" aria-live="polite"><div class="empty">Chargement des états de contenu...</div></div>
+    <div class="panel entry-list" id="videoReviewsList" aria-live="polite"><div class="empty">Aucune revue vidéo persistée.</div></div>
+  </section>
+
+  <!-- MODES ET CAMPAGNES -->
+  <section class="station autonomy-station" data-view="parametres">
+    <div class="station-head">
+      <div>
+        <h2><span class="station-eyebrow">02c</span> Modes et paramètres opérationnels</h2>
+        <p class="dim-note">Les modes sont persistants côté serveur. Le mode Conquistador reste limité par l’approbation humaine et le kill switch.</p>
+      </div>
+      <button class="station-action" id="refreshSettingsBtn" type="button">Actualiser</button>
+    </div>
+    <div class="panel autonomy-panel">
+      <div class="mode-switch" role="group" aria-label="Mode opérationnel">
+        <button type="button" class="mode-btn" data-mode="silencio" id="modeSilencioBtn"><strong>Silencio</strong><small>Observer et préparer</small></button>
+        <button type="button" class="mode-btn" data-mode="copilot" id="modeCopilotBtn"><strong>Copilot</strong><small>Proposer et demander</small></button>
+        <button type="button" class="mode-btn" data-mode="conquistador" id="modeConquistadorBtn"><strong>Conquistador</strong><small>Campagne bornée</small></button>
+      </div>
+      <div class="mode-state" id="modeStatus">Chargement des paramètres...</div>
+      <div class="campaign-controls">
+        <label class="check-line" for="campaignEnabled"><input id="campaignEnabled" type="checkbox" /> Autoriser une campagne préautorisée limitée</label>
+        <label for="campaignMaxPosts">Maximum de publications préparées par jour <input id="campaignMaxPosts" type="number" min="0" max="20" value="0" /></label>
+        <label for="campaignQualityMin">Score qualité minimum requis pour publier (0-100) <input id="campaignQualityMin" type="number" min="0" max="100" value="85" /></label>
+        <label for="campaignTimezone">Fuseau horaire de planification
+          <input id="campaignTimezone" type="text" list="tzList" value="Africa/Bujumbura" placeholder="Africa/Bujumbura" />
+          <datalist id="tzList">
+            <option value="Africa/Bujumbura">Burundi — Bujumbura (UTC+2)</option>
+            <option value="Africa/Kinshasa">RDC — Kinshasa (UTC+1)</option>
+            <option value="Africa/Lubumbashi">RDC — Goma (UTC+2)</option>
+            <option value="Africa/Lubumbashi">RDC — Lubumbashi (UTC+2)</option>
+            <option value="Africa/Lubumbashi">RDC — Bukavu (UTC+2)</option>
+            <option value="Africa/Kigali">Rwanda — Kigali (UTC+2)</option>
+            <option value="Africa/Nairobi">Kenya — Nairobi (UTC+3)</option>
+            <option value="Africa/Dakar">Sénégal — Dakar (UTC+0)</option>
+            <option value="Africa/Douala">Cameroun — Douala (UTC+1)</option>
+            <option value="Africa/Lagos">Nigéria — Lagos (UTC+1)</option>
+          </datalist>
+        </label>
+        <label for="campaignHours">Heures autorisées, dans le fuseau choisi (ex. 8,12,18 — jamais interprétées en UTC) <input id="campaignHours" type="text" placeholder="8,12,18" /></label>
+        <div class="platform-checks" aria-label="Plateformes autorisées">
+          <label><input type="checkbox" value="tiktok" data-campaign-platform /> TikTok</label>
+          <label><input type="checkbox" value="youtube" data-campaign-platform /> YouTube</label>
+          <label><input type="checkbox" value="facebook" data-campaign-platform /> Facebook</label>
+          <label><input type="checkbox" value="instagram" data-campaign-platform /> Instagram</label>
+        </div>
+      </div>
+      <div class="pipeline-actions"><button class="station-action primary" id="saveSettingsBtn" type="button">Enregistrer les paramètres</button><span class="form-msg" id="settingsMsg" aria-live="polite"></span></div>
+    </div>
+  </section>
+
+  <!-- BASE DE CONNAISSANCES -->
+  <section class="station knowledge-station" data-view="contenu">
+    <div class="station-head">
+      <div><h2><span class="station-eyebrow">02d</span> Base de connaissances Savoir Utile</h2><p class="dim-note">Ajoutez uniquement des références réelles : guides, offres, scripts validés ou documents de marque.</p></div>
+      <button class="station-action" id="refreshKnowledgeBtn" type="button">Actualiser</button>
+    </div>
+    <div class="panel task-form knowledge-form">
+      <div class="row">
+        <div><label for="knowledgeTitle">Titre</label><input id="knowledgeTitle" type="text" placeholder="Guide entretien d’embauche" /></div>
+        <div><label for="knowledgeCategory">Catégorie</label><input id="knowledgeCategory" type="text" placeholder="emploi, produit, marque" /></div>
+      </div>
+      <div class="row">
+        <div><label for="knowledgeAssetType">Type de référence</label><select id="knowledgeAssetType"><option value="text">Texte</option><option value="image">Image</option><option value="document">Document</option><option value="video">Vidéo</option><option value="reference">Référence externe</option></select></div>
+        <label class="check-line" for="knowledgeOfficial"><input id="knowledgeOfficial" type="checkbox" /> Référence officielle de Savoir Utile</label>
+      </div>
+      <div><label for="knowledgeSourceUrl">URL source HTTPS (facultative pour texte, nécessaire pour un asset distant)</label><input id="knowledgeSourceUrl" type="url" placeholder="https://..." /></div>
+      <div><label for="knowledgeContent">Contenu de référence</label><textarea id="knowledgeContent" placeholder="Texte réel à transmettre aux agents..." spellcheck="true"></textarea></div>
+      <div class="pipeline-actions"><button class="station-action primary" id="addKnowledgeBtn" type="button">Ajouter la référence</button><span class="form-msg" id="knowledgeMsg" aria-live="polite"></span></div>
+      <div class="panel entry-list" id="knowledgeList"><div class="empty">Aucune référence chargée.</div></div>
+    </div>
+  </section>
+
+  <!-- STUDIO VOCAL REMY -->
+  <section class="station voice-station" data-view="ia">
+    <div class="station-head">
+      <div><h2><span class="station-eyebrow">02e</span> Studio vocal Rémy Neural</h2><p class="dim-note">Le serveur Rémy fourni est FastAPI/edge-tts. Il doit être hébergé séparément sur une URL HTTPS durable avant toute génération depuis Conquistador OS.</p></div>
+      <button class="station-action" id="refreshVoiceHealthBtn" type="button">Vérifier le studio</button>
+    </div>
+    <div class="panel task-form voice-form">
+      <div class="voice-health-line" id="voiceHealthStatus" aria-live="polite">État du studio vocal : vérification en cours...</div>
+      <label for="voiceText">Texte de voix off</label>
+      <textarea id="voiceText" maxlength="50000" placeholder="Colle ici le texte réel de la voix off à générer..."></textarea>
+      <div class="pipeline-actions"><button class="station-action primary" id="generateVoiceBtn" type="button">Générer MP3 Rémy Neural</button><span class="form-msg" id="voiceMsg" aria-live="polite"></span></div>
+      <audio id="voiceAudio" controls preload="none" hidden></audio>
+    </div>
+  </section>
+
+  <!-- AGENT COMMERCIAL -->
+  <section class="station commercial-station" data-view="commercial">
+    <div class="station-head"><div><h2><span class="station-eyebrow">02e</span> Performance commerciale</h2><p class="dim-note">Chiffres réellement enregistrés (Chariow, prospects, relances) — aucune donnée inventée.</p></div></div>
+    <div class="overview-grid" id="commercialSummaryGrid"><div class="empty">Chargement...</div></div>
+    <div class="panel" id="chariowStatusPanel" style="margin-top:10px;"><div class="empty">Chargement du statut Chariow...</div></div>
+
+    <div class="station-head" style="margin-top:18px;"><div><h2><span class="station-eyebrow">02e-2</span> Agent commercial</h2><p class="dim-note">Analyse une intention et prépare une réponse. Aucun message n’est envoyé par ce formulaire.</p></div></div>
+    <div class="panel task-form commercial-form">
+      <div class="row"><div><label for="commercialMessage">Message ou commentaire du prospect</label><textarea id="commercialMessage" placeholder="Ex. Je veux le guide et le prix, s’il vous plaît."></textarea></div><div><label for="commercialPlatform">Plateforme</label><select id="commercialPlatform"><option value="tiktok">TikTok</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="youtube">YouTube</option><option value="whatsapp">WhatsApp</option></select></div></div>
+      <div class="pipeline-actions"><button class="station-action primary" id="runCommercialBtn" type="button">Analyser et préparer</button><span class="form-msg" id="commercialMsg" aria-live="polite"></span></div>
+      <div class="panel pipeline-result-host" id="commercialResult"><div class="empty">Aucune analyse commerciale lancée.</div></div>
+      <div class="followup-form">
+        <h3>Préparer une relance</h3>
+        <p class="dim-note">La relance est enregistrée pour relecture. Elle n’est jamais envoyée automatiquement et nécessite une approbation séparée.</p>
+        <div class="row"><div><label for="commercialFollowupContact">Identifiant du contact (facultatif)</label><input id="commercialFollowupContact" type="text" placeholder="identifiant public ou CRM" /></div><div><label for="commercialFollowupName">Prénom (facultatif)</label><input id="commercialFollowupName" type="text" placeholder="Prénom" /></div></div>
+        <div class="row"><div><label for="commercialFollowupSubject">Sujet de la relance</label><input id="commercialFollowupSubject" type="text" placeholder="Ex. demande du guide" /></div><div><label for="commercialFollowupDelay">Délai proposé</label><select id="commercialFollowupDelay"><option value="1">1 jour</option><option value="3" selected>3 jours</option><option value="7">7 jours</option><option value="14">14 jours</option></select></div></div>
+        <div class="pipeline-actions"><button class="station-action" id="prepareFollowupBtn" type="button">Préparer et enregistrer la relance</button><span class="form-msg" id="followupMsg" aria-live="polite"></span></div>
+        <div class="panel pipeline-result-host" id="followupResult"><div class="empty">Aucune relance préparée.</div></div>
+        <div class="panel entry-list commercial-followups-list" id="commercialFollowupsList"><div class="empty">Aucun historique de relance chargé.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TACHES RECENTES -->
+  <section class="station" data-view="systeme">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">03</span> Taches recentes</h2>
+      <button class="station-action" id="refreshTasks">Actualiser</button>
+    </div>
+    <div class="panel entry-list" id="tasksList"><div class="empty">Chargement...</div></div>
+  </section>
+
+  <!-- STATISTIQUES -->
+  <section class="station" data-view="statistiques">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">04</span> Statistiques (7 derniers jours)</h2>
+    </div>
+    <div class="stat-grid" id="statGrid"></div>
+    <div class="source-stats" id="sourceStats" aria-live="polite"><div class="empty">Aucun regroupement par source chargé.</div></div>
+    <div class="metric-chart-big" id="sourceViewsChart" aria-live="polite"><div class="empty">Graphique des vues en attente de données.</div></div>
+    <div class="station-head" style="margin-top:18px;"><h3>Classement des contenus (30 derniers jours)</h3></div>
+    <div class="panel entry-list" id="contentRankingList"><div class="empty">Chargement du classement...</div></div>
+  </section>
+
+  <!-- OBJECTIFS DE LA SEMAINE -->
+  <section class="station" id="objectivesStation" data-view="objectifs">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">04a</span> 🎯 Objectifs de la semaine</h2>
+      <button class="station-action" id="refreshObjectivesBtn">Actualiser</button>
+    </div>
+
+    <div class="panel" id="objectivesProgress" aria-live="polite">
+      <div class="empty">Chargement des objectifs...</div>
+    </div>
+
+    <details class="objectives-form-details">
+      <summary>Définir / modifier les objectifs de cette semaine</summary>
+      <form class="campaign-controls" id="objectivesForm" onsubmit="return false;">
+        <label>💰 Chiffre d'affaires visé <input id="objChiffreAffaires" type="number" min="0" step="any" placeholder="ex. 100000" /></label>
+        <label>🛒 Nombre de ventes visé <input id="objVentes" type="number" min="0" step="1" placeholder="ex. 5" /></label>
+        <label>👥 Nouveaux prospects visés <input id="objNouveauxProspects" type="number" min="0" step="1" placeholder="ex. 20" /></label>
+        <label>📈 Vues visées <input id="objVues" type="number" min="0" step="1" placeholder="ex. 20000" /></label>
+        <label>👤 Nouveaux abonnés visés <input id="objNouveauxAbonnes" type="number" min="0" step="1" placeholder="ex. 100" /></label>
+        <label>🎬 Contenus réellement publiés visés <input id="objContenusPublies" type="number" min="0" step="1" placeholder="ex. 7" /></label>
+      </form>
+      <details class="objectives-form-details">
+        <summary>Objectifs commerciaux avancés (optionnel)</summary>
+        <form class="campaign-controls" id="objectivesFormAvance" onsubmit="return false;">
+          <label>💬 Conversations commerciales <input id="objConversations" type="number" min="0" step="1" /></label>
+          <label>✅ Prospects convertis <input id="objProspectsConvertis" type="number" min="0" step="1" /></label>
+          <label>❤️ Engagement (likes+commentaires+partages+enregistrements) <input id="objEngagement" type="number" min="0" step="1" /></label>
+          <label>🏬 Visites boutique <input id="objVisitesBoutique" type="number" min="0" step="1" /></label>
+          <label>👆 Clics <input id="objClics" type="number" min="0" step="1" /></label>
+          <label>🔁 Conversions <input id="objConversions" type="number" min="0" step="1" /></label>
+        </form>
+      </details>
+      <button class="station-action" id="saveObjectivesBtn" type="button">Enregistrer les objectifs</button>
+      <p class="form-msg" id="objectivesMsg"></p>
+    </details>
+
+    <div class="station-head" style="margin-top:16px;">
+      <h3>Historique et comparaison</h3>
+    </div>
+    <div class="period-nav">
+      <div class="period-nav-group" role="group" aria-label="Granularité">
+        <button class="period-btn active" data-granularite="semaine" type="button">Semaines</button>
+        <button class="period-btn" data-granularite="mois" type="button">Mois</button>
+      </div>
+      <div class="period-nav-group" role="group" aria-label="Navigation période">
+        <button class="period-btn" id="periodOlderBtn" type="button">← Période antérieure</button>
+        <span id="periodOffsetLabel" class="period-offset-label">Période actuelle</span>
+        <button class="period-btn" id="periodNewerBtn" type="button" disabled>Période plus récente →</button>
+      </div>
+    </div>
+    <div class="panel" id="periodComparison" aria-live="polite"><div class="empty">Chargement de la comparaison...</div></div>
+  </section>
+
+  <!-- FOURNISSEURS IA -->
+  <section class="station" data-view="ia">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">04b</span> Fournisseurs IA</h2>
+      <button class="station-action" id="refreshProviders">Actualiser</button>
+    </div>
+    <div class="panel entry-list" id="providersList"><div class="empty">Chargement...</div></div>
+  </section>
+
+  <!-- CONNECTEURS SOCIAUX -->
+  <section class="station" data-view="reseaux-sociaux">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">04c</span> Connecteurs sociaux</h2>
+      <button class="station-action" id="refreshConnectors">Actualiser</button>
+    </div>
+    <div class="panel entry-list" id="connectorsList"><div class="empty">Chargement...</div></div>
+  </section>
+
+  <!-- PROSPECTS -->
+  <section class="station" data-view="prospects">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">05</span> Prospects recents</h2>
+    </div>
+    <div class="panel entry-list" id="prospectsList"><div class="empty">Chargement...</div></div>
+  </section>
+
+  <!-- JOURNAL D'EXECUTION -->
+  <section class="station" data-view="systeme">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">06</span> Journal d'execution</h2>
+    </div>
+    <div class="panel entry-list" id="executionsList"><div class="empty">Chargement...</div></div>
+  </section>
+
+  <!-- ERREURS -->
+  <section class="station" data-view="systeme">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">07</span> Erreurs recentes</h2>
+    </div>
+    <div class="panel entry-list" id="errorsList"><div class="empty">Chargement...</div></div>
+  </section>
+
+  <!-- RAPPORT QUOTIDIEN -->
+  <section class="station" data-view="systeme">
+    <div class="station-head">
+      <h2><span class="station-eyebrow">08</span> Rapport quotidien</h2>
+      <button class="station-action primary" id="generateReportBtn">Generer maintenant</button>
+    </div>
+    <div class="panel" id="reportPanel" style="padding:14px;"><div class="empty">Aucun rapport genere pour l'instant dans cette session.</div></div>
+  </section>
+
+    </div>
+    <footer>Conquistador OS v1 — Savoir Utile — <span id="backendLabel">memoire: ?</span></footer>
+  </div>
+</div>
+
+<!-- MODALE PREMIUM (remplace confirm()/alert() natifs) -->
+<div class="modal-overlay" id="modalOverlay" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-box">
+    <p class="modal-eyebrow" id="modalEyebrow">Confirmation</p>
+    <h2 class="modal-title" id="modalTitle">—</h2>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" id="modalCancelBtn" type="button">Annuler</button>
+      <button class="modal-btn-confirm" id="modalConfirmBtn" type="button">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CENTRE DE NOTIFICATIONS -->
+<div class="notif-panel" id="notifPanel" role="dialog" aria-modal="true" aria-label="Centre de notifications">
+  <div class="notif-panel-head">
+    <h2>Notifications</h2>
+    <button class="icon-btn" id="notifCloseBtn" type="button" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div id="notifList"><div class="notif-empty">Chargement...</div></div>
+</div>
+
+<!-- RECHERCHE GLOBALE -->
+<div class="search-palette-overlay" id="searchOverlay" role="dialog" aria-modal="true" aria-label="Recherche globale">
+  <div class="search-palette">
+    <input id="searchInput" type="text" placeholder="Rechercher un espace, un paramètre, une action..." autocomplete="off" />
+    <div class="search-results" id="searchResults"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

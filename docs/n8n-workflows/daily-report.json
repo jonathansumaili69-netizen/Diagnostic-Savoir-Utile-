@@ -1,0 +1,56 @@
+{
+  "name": "Conquistador OS - Rapport quotidien (backup planification)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-1",
+      "name": "Tous les jours a 06h00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://VOTRE-SITE.netlify.app/api/report/daily",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-request-1",
+      "name": "Generer le rapport quotidien",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Tous les jours a 06h00": {
+      "main": [
+        [
+          {
+            "node": "Generer le rapport quotidien",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Alternative de secours a la fonction planifiee Netlify (report-daily-scheduled.js) si les scheduled functions deviennent indisponibles. Remplacer VOTRE-SITE.netlify.app par le domaine reel du deploiement. Cet appel ne necessite pas de cle API car GET /api/report/daily est un endpoint de lecture, mais peut etre proge par un en-tete x-conquistador-key ajoute dans les options HTTP Request si souhaite."
+  }
+}

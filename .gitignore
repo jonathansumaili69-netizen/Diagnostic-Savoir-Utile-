@@ -1,0 +1,48 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.token
+*.secret
+*_credentials.*
+credentials.*
+.secrets/
+secrets/
+
+# Dependencies
+node_modules/
+
+# Runtime / local state
+data/
+.tmp/
+.tmp-*/
+conquistador-data/
+
+# Rendered media and transient artifacts
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
+*.m4a
+*.srt
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Coverage / test output
+coverage/
+.nyc_output/
+
+# Netlify local state
+.netlify/

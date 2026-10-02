@@ -1,0 +1,278 @@
+{
+  "registry": "conquistador-character-registry",
+  "version": 1,
+  "generated_at": "2026-09-28T08:02:18.064Z",
+  "unknown_character_policy": "Aucun personnage non officiel ne peut etre genere : resolveCharacterId() renvoie null et le pipeline marque la scene FAILED / NEEDS_REVIEW plutot que de substituer un visage.",
+  "characters": {
+    "samuel": {
+      "character_id": "samuel",
+      "nom": "Samuel",
+      "version": 1,
+      "role": "Personnage principal / public cible : jeune chercheur d'emploi",
+      "description_visuelle": "Homme africain francophone, 22-24 ans, silhouette athletique moyenne, posture droite. Expression ouverte et expressive, regard direct. Palette dominante bleu clair / jean.",
+      "caracteristiques_visage": "Visage jeune et sympathique, yeux marron fonce, peau noire aux traits africains authentiques, front degage, sourcils fournis, nez droit, levres pleines, pas de barbe.",
+      "coiffure": "Cheveux noirs courts, coiffure moderne nette, lignes propres, sans degrade marque.",
+      "apparence_generale": "Jeune adulte, corpulence moyenne, posture engagee, gestuelle expressive.",
+      "vetements_style": "Chemise bleue claire manches retroussees, jean bleu fonce, chaussures en cuir marron, sac a dos beige/pratique. Style simple, propre, accessible.",
+      "elements_distinctifs": "Chemise bleue claire systematique, sac a dos beige, documents/CV a la main dans les scenes narratives.",
+      "style_visuel": "Illustration realiste 3D semi-realiste, eclairage doux, decor bureautique / chambre / rue urbaine africaine.",
+      "metadata": {
+        "age": "22-24 ans",
+        "genre": "homme",
+        "origine": "africain francophone",
+        "langue": "francais",
+        "role_narratif": "chercheur emploi",
+        "personnalite": "determine, intelligent, curieux, humble, parfois stresse mais toujours pret a apprendre",
+        "palette": [
+          "#8FC1E3",
+          "#1B3A5C",
+          "#6B4A2F"
+        ]
+      },
+      "reference_principale": {
+        "role": "PRIMARY",
+        "versionne": false,
+        "filename": "samuel-reference-principale.jpeg",
+        "rel_path": "personnages/samuel/samuel-reference-principale.jpeg",
+        "size_bytes": 100139,
+        "content_sha256": "ef4a1704941de4e6f2085725859db0a3273a35e622f44cfdb2ad8d93ea56d252",
+        "reference_id": "7f31fd64bfce97b4",
+        "disponible": true
+      },
+      "references_secondaires": [
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165428.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165428.jpg",
+          "size_bytes": 894027,
+          "content_sha256": "53a2919b8b10c8b97642bd91161af548b52607b8102537197e85bad947eeb0e1",
+          "reference_id": "424b11276bdbe19e"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165445.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165445.jpg",
+          "size_bytes": 547424,
+          "content_sha256": "8530f6494ee464e5978c9107b7fcd74db41aed056d16326abcb28d33f3f9be97",
+          "reference_id": "14554d27fc082451"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165721.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165721.jpg",
+          "size_bytes": 1015024,
+          "content_sha256": "a86bbd1863e40624e924ba206bf0ba50dcb74026191fd24db2522f931c9c7057",
+          "reference_id": "1bad25ec53f19305"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165749.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165749.jpg",
+          "size_bytes": 1515064,
+          "content_sha256": "f39526132a4c1cfe1500e870e6628e9257d7ebd23ae4a2998ef7bcaa56e9a659",
+          "reference_id": "87d63f4743cd15fb"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165801.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165801.jpg",
+          "size_bytes": 1098410,
+          "content_sha256": "a7e70321d78a51e255e002816be4be764d9606ad8b3c59c4b1a4ec90bdcf37dd",
+          "reference_id": "586315bfe4991b9b"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165807.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165807.jpg",
+          "size_bytes": 1257674,
+          "content_sha256": "a45fe0071ca7c5c3b76d0c125fa030f070f60b5a60903b99c415e42ddd974a2e",
+          "reference_id": "52f1b7738997e6dd"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165812.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165812.jpg",
+          "size_bytes": 409639,
+          "content_sha256": "a7cd0c12054b56045a767639394294b67962c8c6f5976d629ea47f598895577c",
+          "reference_id": "844b9f77daee269f"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165818.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165818.jpg",
+          "size_bytes": 510121,
+          "content_sha256": "5118caebc3c8c0afb9d34ed78a704833851de4c5c7a27942980a2f927435346e",
+          "reference_id": "1489ed78aa1ebf2e"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165824.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165824.jpg",
+          "size_bytes": 1175406,
+          "content_sha256": "ef5f653f7e8f789dd2f9dea53b4855abfa331c4a745b050ee2eaffa7f7386439",
+          "reference_id": "3dc5e71c70763e70"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-SAVE_20260920_165846.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-SAVE_20260920_165846.jpg",
+          "size_bytes": 1372438,
+          "content_sha256": "e61ac8e57be568d7e0ad74c8e0cde97f245b339d370a9fcc5f7396c28e3c1b4e",
+          "reference_id": "707bc1b956100659"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165644.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-marc-SAVE_20260920_165644.jpg",
+          "size_bytes": 987214,
+          "content_sha256": "4c06f815574008d494057e04f445692340e647118df9065fdfd48e7c1486b02f",
+          "reference_id": "6368514e51c4930a"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165650.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-marc-SAVE_20260920_165650.jpg",
+          "size_bytes": 1252337,
+          "content_sha256": "f2deb512eea7d57e0a8f72b4d5a3100abd9e95c37528d4966eb9b0337731ae3d",
+          "reference_id": "d33bb544a20cb7dd"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165659.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-marc-SAVE_20260920_165659.jpg",
+          "size_bytes": 1321950,
+          "content_sha256": "55c37ee6a7e7d4ffb012407697db6553804dd6c4480584d818a82ea9e4c3f960",
+          "reference_id": "c26209eea1616c03"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165705.jpg",
+          "rel_path": "personnages/samuel/refs/ref-samuel-marc-SAVE_20260920_165705.jpg",
+          "size_bytes": 1378850,
+          "content_sha256": "139a3c67bbd97f300ea715df91eb17f43d0f5af86f3543ede8aa590d37eab676",
+          "reference_id": "8da7f26705cbbd27"
+        }
+      ],
+      "reference_count": 15,
+      "statut_reference": "PRIMARY_AND_SECONDARY"
+    },
+    "marc": {
+      "character_id": "marc",
+      "nom": "Marc",
+      "version": 1,
+      "role": "Mentor / recruteur experimente, guide Samuel",
+      "description_visuelle": "Homme africain francophone, 35-45 ans, silhouette athletique moyenne, posture confiante. Barbe taillee, expression rassurante. Palette dominante bleu marine / chemise bleue claire.",
+      "caracteristiques_visage": "Visage mature rassurant et professionnel, yeux marron fonce, peau noire aux traits africains authentiques, barbe bien entretenue, pommettes marquees.",
+      "coiffure": "Cheveux noirs courts, coupe professionnelle, ligne nette.",
+      "apparence_generale": "Adulte etabli, prestance de recruteur, sourire bienveillant.",
+      "vetements_style": "Costume bleu marine elegant, chemise bleue claire, ceinture et chaussures en cuir marron, montre classique. Style professionnel et credible.",
+      "elements_distinctifs": "Costume bleu marine systematique, barbe taillee, documents/checklists et parfois ordinateur portable.",
+      "style_visuel": "Illustration realiste 3D semi-realiste, eclairage de bureau moderne, decor professionnel lumineux.",
+      "metadata": {
+        "age": "35-45 ans",
+        "genre": "homme",
+        "origine": "africain francophone",
+        "langue": "francais",
+        "role_narratif": "mentor / recruteur",
+        "personnalite": "calme, patient, pedagogue, honnete, bienveillant, autoritaire mais accessible",
+        "palette": [
+          "#1F3A5F",
+          "#8FC1E3",
+          "#2E2E2E"
+        ]
+      },
+      "reference_principale": {
+        "role": "PRIMARY",
+        "versionne": false,
+        "filename": "marc-reference-principale.jpg",
+        "rel_path": "personnages/marc/marc-reference-principale.jpg",
+        "size_bytes": 1085019,
+        "content_sha256": "8c38e2baa720e57bd7f6fd025284848f1d42bd3d4cd8a7bb363e66e12966f354",
+        "reference_id": "9a25c5e0ac304844",
+        "disponible": true
+      },
+      "references_secondaires": [
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-marc-SAVE_20260920_165630.jpg",
+          "rel_path": "personnages/marc/refs/ref-marc-SAVE_20260920_165630.jpg",
+          "size_bytes": 524641,
+          "content_sha256": "62abad2acbbd685ce11dc692f06a778ac10f3719131358e5b474ff7af5916a20",
+          "reference_id": "7df1bf52ba9e44cd"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-marc-SAVE_20260920_165637.jpg",
+          "rel_path": "personnages/marc/refs/ref-marc-SAVE_20260920_165637.jpg",
+          "size_bytes": 468424,
+          "content_sha256": "7fe83f07dfff971590613d211e1895df251528f1a4e5befb5b7b777bdc4a3fc1",
+          "reference_id": "1c50765147d14cd5"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-marc-SAVE_20260920_165710.jpg",
+          "rel_path": "personnages/marc/refs/ref-marc-SAVE_20260920_165710.jpg",
+          "size_bytes": 1085019,
+          "content_sha256": "8c38e2baa720e57bd7f6fd025284848f1d42bd3d4cd8a7bb363e66e12966f354",
+          "reference_id": "956e39a5ebc9bafc"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165644.jpg",
+          "rel_path": "personnages/marc/refs/ref-samuel-marc-SAVE_20260920_165644.jpg",
+          "size_bytes": 987214,
+          "content_sha256": "4c06f815574008d494057e04f445692340e647118df9065fdfd48e7c1486b02f",
+          "reference_id": "52f423f369950505"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165650.jpg",
+          "rel_path": "personnages/marc/refs/ref-samuel-marc-SAVE_20260920_165650.jpg",
+          "size_bytes": 1252337,
+          "content_sha256": "f2deb512eea7d57e0a8f72b4d5a3100abd9e95c37528d4966eb9b0337731ae3d",
+          "reference_id": "a65609044621bce3"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165659.jpg",
+          "rel_path": "personnages/marc/refs/ref-samuel-marc-SAVE_20260920_165659.jpg",
+          "size_bytes": 1321950,
+          "content_sha256": "55c37ee6a7e7d4ffb012407697db6553804dd6c4480584d818a82ea9e4c3f960",
+          "reference_id": "2641b67c707b07c1"
+        },
+        {
+          "role": "SECONDARY",
+          "versionne": true,
+          "filename": "ref-samuel-marc-SAVE_20260920_165705.jpg",
+          "rel_path": "personnages/marc/refs/ref-samuel-marc-SAVE_20260920_165705.jpg",
+          "size_bytes": 1378850,
+          "content_sha256": "139a3c67bbd97f300ea715df91eb17f43d0f5af86f3543ede8aa590d37eab676",
+          "reference_id": "7acdd1a7c9aec3df"
+        }
+      ],
+      "reference_count": 8,
+      "statut_reference": "PRIMARY_AND_SECONDARY"
+    }
+  },
+  "character_count": 2
+}

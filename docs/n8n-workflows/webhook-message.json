@@ -1,0 +1,117 @@
+{
+  "name": "Conquistador OS - Relais message entrant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "conquistador-message-entrant",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-1",
+      "name": "Webhook - message externe recu",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-identifiant",
+              "name": "identifiant",
+              "type": "string",
+              "value": "={{ $json.body.from }}"
+            },
+            {
+              "id": "assign-nom",
+              "name": "nom",
+              "type": "string",
+              "value": "={{ $json.body.senderName }}"
+            },
+            {
+              "id": "assign-canal",
+              "name": "canal",
+              "type": "string",
+              "value": "whatsapp"
+            },
+            {
+              "id": "assign-message",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.body.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-fields-1",
+      "name": "Adapter le format Conquistador",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://VOTRE-SITE.netlify.app/api/webhook/message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-conquistador-key",
+              "value": "={{ $credentials.conquistadorApiKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"identifiant\": $json.identifiant, \"nom\": $json.nom, \"canal\": $json.canal, \"message\": $json.message } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-request-1",
+      "name": "Envoyer a Conquistador OS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - message externe recu": {
+      "main": [
+        [
+          {
+            "node": "Adapter le format Conquistador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adapter le format Conquistador": {
+      "main": [
+        [
+          {
+            "node": "Envoyer a Conquistador OS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Recoit un message depuis une source externe (integration WhatsApp, formulaire, chatbot, etc.), l'adapte au format attendu par /api/webhook/message, puis l'envoie a Conquistador OS qui prepare automatiquement une reponse (approbation humaine requise avant tout envoi reel, voir README.md). Remplacer VOTRE-SITE.netlify.app par le domaine reel et configurer une credential HTTP Header Auth nommee 'conquistadorApiKey' contenant CONQUISTADOR_API_KEY, ou coller directement la cle dans le champ x-conquistador-key."
+  }
+}

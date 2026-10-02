@@ -1,0 +1,68 @@
+{
+  "name": "Conquistador OS - Relais nouvelle vente",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "conquistador-nouvelle-vente",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-1",
+      "name": "Webhook - vente confirmee",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://VOTRE-SITE.netlify.app/api/webhook/sale",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-conquistador-key",
+              "value": "REMPLACER_PAR_VOTRE_CLE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"montant\": $json.body.amount, \"identifiant\": $json.body.customer_email, \"produit\": \"La methode complete pour trouver un emploi en Afrique francophone\", \"source\": $json.body.source } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-request-1",
+      "name": "Enregistrer la vente dans Conquistador OS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - vente confirmee": {
+      "main": [
+        [
+          {
+            "node": "Enregistrer la vente dans Conquistador OS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "A brancher sur le webhook de confirmation de paiement de votre plateforme de vente (ex: Chariow, si elle propose des webhooks sortants). Adapter les chemins $json.body.* au format reellement envoye par la plateforme source avant utilisation. Remplacer VOTRE-SITE.netlify.app et REMPLACER_PAR_VOTRE_CLE."
+  }
+}

@@ -1,0 +1,108 @@
+name: Conquistador Render Worker
+
+# Worker EPHEMERE : demarre, recupere les jobs video en attente, les fait
+# avancer via le point d'entree EXISTANT (scripts/render-worker.js, qui
+# reutilise src/core/videoOrchestrator.js — aucun orchestrateur parallele),
+# puis S'ARRETE. Aucun keep-alive artificiel, aucune boucle while(true).
+#
+# Declenchement AUTOMATIQUE toutes les 5 heures (cron UTC) + declenchement
+# manuel (workflow_dispatch) conserve. L'idempotence (videoJobs +
+# claim/lock en base) empeche tout double traitement entre deux passages.
+
+on:
+  schedule:
+    # Toutes les 5 heures : 00:00, 05:00, 10:00, 15:00, 20:00 UTC
+    - cron: "0 */5 * * *"
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: "ID d'un job precis a traiter jusqu'a completion (optionnel ; vide = tous les jobs en attente, un seul passage)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Anti double-lancement : deux dispatches simultanes ne tournent jamais en
+# parallele (l'idempotence cote code reste la seconde ligne de defense).
+concurrency:
+  group: conquistador-worker
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: Traitement des video_jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # --- Secrets GitHub obligatoires (Settings > Secrets and variables > Actions) ---
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
+      # --- Secrets optionnels selon les providers reellement utilises ---
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # --- Generation d'images conditionnee par reference (Hugging Face) ---
+      # HF_TOKEN provient EXCLUSIVEMENT de GitHub Secrets (Settings > Secrets
+      # and variables > Actions) : jamais dans le depot, jamais expose au
+      # frontend. Si le secret est absent, le provider HF est ignore proprement
+      # et la chaine retombe sur l'asset officiel (existing_asset).
+      IMAGE_IMG2IMG_PROVIDER: huggingface
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      IMAGE_IMG2IMG_MODEL: black-forest-labs/FLUX.1-Kontext-dev
+      # --- Configuration non sensible ---
+      VOICE_PROVIDER: edge-tts
+      VOICE_NAME: Rémy Neural
+      VOICE_STUDIO_TIMEOUT_MS: "20000"
+      # Bucket media canonique du projet (identique a .env.example)
+      SUPABASE_MEDIA_BUCKET: conquistador-media
+      KILL_SWITCH_DEFAULT: "false"
+      CONQUISTADOR_DATA_DIR: ${{ runner.temp }}/conquistador-data
+    steps:
+      - name: Checkout du depot
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installation des dependances (reproductible)
+        run: npm ci --no-audit --no-fund
+
+      - name: Installation FFmpeg + ffprobe
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      - name: Verification prealable (syntaxe JavaScript + suite complete)
+        run: |
+          find src scripts netlify tests -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          npm test
+
+      - name: Etat du provider image-to-image (Hugging Face)
+        run: |
+          node -e "const st=require('./src/core/imageProviders/providerAdapter').status(); console.log(JSON.stringify({configure:st.configure,provider:st.provider,cle_detectee:st.cle_detectee})); if(!st.configure){console.warn('Hugging Face non configure (secret HF_TOKEN absent) - repli officiel existing_asset.');}"
+
+      - name: Sante Voice Studio (externe)
+        run: node -e "require('./src/core/voiceStudio').health().then(h=>{console.log(JSON.stringify(h)); if(!h.available){console.warn('Voice Studio indisponible — les jobs marqueront VOICE_UNAVAILABLE honnetement.');}})"
+        env:
+          VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
+
+      - name: Execution du worker (ephemere, un passage)
+        env:
+          WORKER_JOB_ID: ${{ inputs.job_id }}
+        run: |
+          if [ -n "$WORKER_JOB_ID" ]; then
+            node scripts/render-worker.js --job="$WORKER_JOB_ID"
+          else
+            node scripts/render-worker.js --once
+          fi
+
+      - name: Fin du runner
+        if: always()
+        run: echo "Worker termine (ephemere) — aucun processus ne reste actif."

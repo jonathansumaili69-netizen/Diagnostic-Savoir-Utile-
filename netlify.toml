@@ -1,0 +1,283 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+  command = "echo 'Aucun build necessaire - fichiers statiques + fonctions Node'"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Pages publiques nécessaires aux portails développeur et aux utilisateurs.
+[[redirects]]
+  from = "/terms"
+  to = "/terms.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+
+# Redirections pour exposer une API propre /api/xxx qui pointe vers les fonctions Netlify.
+# Cela permet de changer l'implementation interne sans casser les URLs publiques
+# utilisees par n8n, le tableau de bord ou des services externes.
+
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200
+
+[[redirects]]
+  from = "/api/tasks"
+  to = "/.netlify/functions/tasks"
+  status = 200
+
+[[redirects]]
+  from = "/api/tasks/:id/run"
+  to = "/.netlify/functions/task-run?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/tasks/:id"
+  to = "/.netlify/functions/task-get?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/webhook/message"
+  to = "/.netlify/functions/webhook-message"
+  status = 200
+
+[[redirects]]
+  from = "/api/webhook/sale"
+  to = "/.netlify/functions/webhook-sale"
+  status = 200
+
+[[redirects]]
+  from = "/api/webhook/stat"
+  to = "/.netlify/functions/webhook-stat"
+  status = 200
+
+[[redirects]]
+  from = "/api/webhook/comment"
+  to = "/.netlify/functions/webhook-comment"
+  status = 200
+
+[[redirects]]
+  from = "/api/report/daily"
+  to = "/.netlify/functions/report-daily"
+  status = 200
+
+[[redirects]]
+  from = "/api/approvals"
+  to = "/.netlify/functions/approval-list"
+  status = 200
+
+[[redirects]]
+  from = "/api/approvals/:id"
+  to = "/.netlify/functions/approval-decide?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/dashboard"
+  to = "/.netlify/functions/dashboard-data"
+  status = 200
+
+[[redirects]]
+  from = "/api/settings"
+  to = "/.netlify/functions/settings"
+  status = 200
+
+[[redirects]]
+  # BUG CORRIGE : ce endpoint (netlify/functions/weekly-objectives.js) existait
+  # deja mais n'avait jamais ete raccorde a /api/*, le rendant inaccessible
+  # depuis le frontend malgre un backend fonctionnel et teste.
+  from = "/api/weekly-objectives"
+  to = "/.netlify/functions/weekly-objectives"
+  status = 200
+
+[[redirects]]
+  from = "/api/knowledge"
+  to = "/.netlify/functions/knowledge"
+  status = 200
+
+[[redirects]]
+  from = "/api/video-reviews"
+  to = "/.netlify/functions/video-reviews"
+  status = 200
+
+[[redirects]]
+  from = "/api/ai-providers"
+  to = "/.netlify/functions/ai-providers"
+  status = 200
+
+[[redirects]]
+  from = "/api/voice/health"
+  to = "/.netlify/functions/voice-health"
+  status = 200
+
+[[redirects]]
+  from = "/api/voice/generate"
+  to = "/.netlify/functions/voice-generate"
+  status = 200
+
+[[redirects]]
+  from = "/api/diagnostics"
+  to = "/.netlify/functions/diagnostics"
+  status = 200
+
+[[redirects]]
+  from = "/api/kill-switch"
+  to = "/.netlify/functions/kill-switch"
+  status = 200
+
+[[redirects]]
+  from = "/api/connectors"
+  to = "/.netlify/functions/connectors"
+  status = 200
+
+[[redirects]]
+  from = "/api/meta/oauth/start"
+  to = "/.netlify/functions/meta-oauth-start"
+  status = 200
+
+[[redirects]]
+  from = "/api/meta/oauth/callback"
+  to = "/.netlify/functions/meta-oauth-callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/meta/status"
+  to = "/.netlify/functions/meta-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/meta/test"
+  to = "/.netlify/functions/meta-test"
+  status = 200
+
+[[redirects]]
+  from = "/api/meta/read"
+  to = "/.netlify/functions/meta-read"
+  status = 200
+
+[[redirects]]
+  from = "/api/meta/disconnect"
+  to = "/.netlify/functions/meta-disconnect"
+  status = 200
+
+[[redirects]]
+  from = "/api/meta/webhook"
+  to = "/.netlify/functions/meta-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/api/youtube/oauth/start"
+  to = "/.netlify/functions/youtube-oauth-start"
+  status = 200
+
+[[redirects]]
+  from = "/api/youtube/oauth/callback"
+  to = "/.netlify/functions/youtube-oauth-callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/youtube/status"
+  to = "/.netlify/functions/youtube-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/youtube/test"
+  to = "/.netlify/functions/youtube-test"
+  status = 200
+
+[[redirects]]
+  from = "/api/youtube/read"
+  to = "/.netlify/functions/youtube-read"
+  status = 200
+
+[[redirects]]
+  from = "/api/youtube/disconnect"
+  to = "/.netlify/functions/youtube-disconnect"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok/oauth/start"
+  to = "/.netlify/functions/tiktok-oauth-start"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok/oauth/callback"
+  to = "/.netlify/functions/tiktok-oauth-callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok/status"
+  to = "/.netlify/functions/tiktok-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok/test"
+  to = "/.netlify/functions/tiktok-test"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok/read"
+  to = "/.netlify/functions/tiktok-read"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok/publish-status"
+  to = "/.netlify/functions/tiktok-publish-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok/disconnect"
+  to = "/.netlify/functions/tiktok-disconnect"
+  status = 200
+
+[[redirects]]
+  from = "/api/video/jobs"
+  to = "/.netlify/functions/video-jobs"
+  status = 200
+
+[[redirects]]
+  from = "/api/video/jobs/:id/process"
+  to = "/.netlify/functions/video-job-process?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/video/jobs/:id"
+  to = "/.netlify/functions/video-job-get?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# NOTE SUR LA PLANIFICATION (Scheduled Functions) :
+# netlify/functions/report-daily-scheduled.js utilise le wrapper `schedule()` de
+# @netlify/functions (plan Free compatible, limite les invocations mais suffisante
+# pour 1 rapport/jour). Si ce mecanisme change chez Netlify, une alternative 100%
+# gratuite et fiable consiste a appeler /api/report/daily depuis un declencheur
+# externe gratuit (GitHub Actions cron, cron-job.org, ou un workflow n8n).
+# Voir docs/ALTERNATIVES.md et docs/n8n-workflows/daily-report.json.
+
+[dev]
+  functions = "netlify/functions"
+  publish = "public"
+  port = 8888
+
+[[redirects]]
+  from = "/api/chariow/stats"
+  to = "/.netlify/functions/chariow-stats"
+  status = 200
+
+[[redirects]]
+  from = "/api/webhook/chariow"
+  to = "/.netlify/functions/webhook-chariow"
+  status = 200
+
+[[redirects]]
+  from = "/api/scheduler"
+  to = "/.netlify/functions/scheduler-tick"
+  status = 200

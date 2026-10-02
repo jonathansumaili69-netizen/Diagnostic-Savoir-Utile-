@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conquistador OS — rapport final Meta</title>
+<style>
+:root { color-scheme: light; --ink:#1f2937; --muted:#667085; --line:#d9dee8; --navy:#17233c; --gold:#a97925; --ok:#087443; --warn:#9a6700; }
+* { box-sizing:border-box; }
+body { margin:0; background:#f5f7fb; color:var(--ink); font:16px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+main { max-width:1120px; margin:0 auto; padding:32px 20px 64px; background:white; min-height:100vh; box-shadow:0 0 28px rgba(23,35,60,.08); }
+h1,h2,h3 { color:var(--navy); line-height:1.25; }
+h1 { border-bottom:4px solid var(--gold); padding-bottom:14px; }
+h2 { margin-top:36px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+blockquote { border-left:4px solid var(--gold); margin:20px 0; padding:10px 16px; color:#475467; background:#fffaf0; }
+table { border-collapse:collapse; width:100%; margin:18px 0 26px; font-size:.94rem; }
+th,td { border:1px solid var(--line); padding:10px 12px; text-align:left; vertical-align:top; }
+th { background:var(--navy); color:white; }
+tr:nth-child(even) td { background:#fafbfc; }
+code { background:#f0f2f5; border-radius:4px; padding:2px 5px; }
+a { color:#155eef; }
+@media (max-width:720px) { main { padding:22px 12px 44px; } table { display:block; overflow-x:auto; white-space:normal; } th,td { min-width:160px; } }
+</style>
+</head>
+<body><main><h1>Conquistador OS V1.1.1 — rapport final de correction production</h1>
+<p><strong>Date de vérification :</strong> 17 août 2026<br />
+<strong>Site vérifié :</strong> <a href="https://conquistadoros1.netlify.app">https://conquistadoros1.netlify.app</a><br />
+<strong>Déploiement final :</strong> <code>6a81a4cc9bd23fdf8de62464</code><br />
+<strong>Archive de livraison Meta :</strong> <code>conquistador-os-meta-infrastructure.zip</code>, prête à déployer après configuration Meta<br />
+<strong>Périmètre :</strong> corrections additives sur le projet existant, sans suppression fonctionnelle, reset Supabase ni création de projet Supabase.</p>
+<blockquote>
+<p><strong>Règle de confidentialité :</strong> aucune clé API, clé <code>service_role</code> ou secret HMAC n’est reproduit dans ce rapport, les logs, le dashboard ou les réponses API.</p>
+</blockquote>
+<h2>CONFIGURATION</h2>
+<table>
+<thead>
+<tr>
+<th>Élément</th>
+<th style="text-align: right;">État</th>
+<th>Preuve vérifiable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Projet Netlify cible</td>
+<td style="text-align: right;">✅</td>
+<td>Projet <code>conquistadoros1</code>, domaine public <code>https://conquistadoros1.netlify.app</code></td>
+</tr>
+<tr>
+<td>Déploiement de l’archive corrigée</td>
+<td style="text-align: right;">✅</td>
+<td>Déploiement <code>6a81a4cc9bd23fdf8de62464</code>, build et 19 fonctions déployés ; le site est live</td>
+</tr>
+<tr>
+<td><code>CONQUISTADOR_API_KEY</code></td>
+<td style="text-align: right;">✅</td>
+<td>Variable configurée côté Netlify ; valeur jamais affichée</td>
+</tr>
+<tr>
+<td><code>CONQUISTADOR_WEBHOOK_SECRET</code></td>
+<td style="text-align: right;">✅</td>
+<td>Variable configurée côté Netlify ; valeur jamais affichée</td>
+</tr>
+<tr>
+<td><code>REQUIRE_WEBHOOK_SIGNATURE=true</code></td>
+<td style="text-align: right;">✅</td>
+<td>Requête webhook sans signature : HTTP 401 ; signature erronée : HTTP 401</td>
+</tr>
+<tr>
+<td><code>MAX_HTTP_BODY_BYTES=1048576</code></td>
+<td style="text-align: right;">✅</td>
+<td>Corps HTTP supérieur à 1 Mo : HTTP 413</td>
+</tr>
+<tr>
+<td><code>ALLOWED_ORIGIN</code></td>
+<td style="text-align: right;">✅</td>
+<td>Valeur effective correspondant exactement à <code>https://conquistadoros1.netlify.app</code></td>
+</tr>
+<tr>
+<td>CORS origine autorisée</td>
+<td style="text-align: right;">✅</td>
+<td><code>GET /api/health</code> avec l’origine exacte : HTTP 200 et en-tête CORS exact</td>
+</tr>
+<tr>
+<td>CORS origine étrangère</td>
+<td style="text-align: right;">✅</td>
+<td><code>GET /api/health</code> avec <code>Origin: https://evil.example</code> : HTTP 403 et <code>Origine non autorisee</code></td>
+</tr>
+<tr>
+<td>Supabase existant</td>
+<td style="text-align: right;">✅</td>
+<td>Projet <code>sgbaltdxjdxlrqsefekf</code> utilisé ; <code>/api/health</code> retourne <code>memoire_backend: supabase</code></td>
+</tr>
+<tr>
+<td>Migrations Supabase</td>
+<td style="text-align: right;">✅</td>
+<td>Migrations additives appliquées ; <code>meta_connections</code> et <code>meta_oauth_states</code> ajoutées avec RLS ; aucun reset, aucune table doublon, aucune donnée remplacée</td>
+</tr>
+<tr>
+<td>Advisor sécurité Supabase</td>
+<td style="text-align: right;">✅</td>
+<td>Aucun <code>WARN</code> ou <code>ERROR</code> relevé ; les notices restantes sont informatives et liées à l’architecture backend-only</td>
+</tr>
+<tr>
+<td>Exposition frontend de <code>SUPABASE_SERVICE_KEY</code></td>
+<td style="text-align: right;">✅</td>
+<td>Secret uniquement côté environnement Netlify ; non présent dans le dashboard ni dans les réponses API</td>
+</tr>
+<tr>
+<td>Ordre IA canonique</td>
+<td style="text-align: right;">✅</td>
+<td><code>/api/health</code> et dashboard : <strong>Gemini → Groq → OpenRouter → Mock</strong></td>
+</tr>
+<tr>
+<td>Wizard onboarding</td>
+<td style="text-align: right;">✅</td>
+<td>Cinq étapes vérifiées : Supabase, IA, Facebook/Instagram, TikTok, WhatsApp</td>
+</tr>
+<tr>
+<td>Infrastructure Facebook/Instagram</td>
+<td style="text-align: right;">✅</td>
+<td>OAuth code serveur, state à usage unique, chiffrement AES-256-GCM, statut, lecture, webhook et déconnexion ajoutés de façon additive</td>
+</tr>
+<tr>
+<td>Identifiants Meta</td>
+<td style="text-align: right;">⚠️</td>
+<td>Non créés volontairement à ce stade, conformément à la demande ; aucune valeur secrète n’a été inventée</td>
+</tr>
+<tr>
+<td>Connexion sociale live</td>
+<td style="text-align: right;">⏳</td>
+<td>Facebook et Instagram restent <code>NON CONNECTÉ</code> jusqu’à l’autorisation officielle d’une application Meta réelle</td>
+</tr>
+</tbody>
+</table>
+<h2>TESTS</h2>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th style="text-align: right;">Résultat</th>
+<th>Preuve</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Suite automatisée après ajout Meta</td>
+<td style="text-align: right;"><strong>138/138</strong></td>
+<td><code>npm test</code>, 138 passants, 0 échec, 0 ignoré ; inclut <code>tests/metaIntegration.test.js</code></td>
+</tr>
+<tr>
+<td>Vérification syntaxique JavaScript</td>
+<td style="text-align: right;">✅</td>
+<td><code>node --check</code> sur tous les fichiers JavaScript de <code>src</code> et <code>netlify/functions</code></td>
+</tr>
+<tr>
+<td>Intégrité de l’archive</td>
+<td style="text-align: right;">✅</td>
+<td><code>unzip -t</code> réussi ; 7,92 Mo et 146 entrées ; aucun secret ou cache de déploiement ; empreinte conservée dans le fichier sidecar <code>conquistador-os-meta-infrastructure.sha256</code></td>
+</tr>
+<tr>
+<td>Exclusions de sécurité de l’archive</td>
+<td style="text-align: right;">✅</td>
+<td>Aucun <code>node_modules</code>, cache <code>.netlify</code>, <code>.env</code> ou dossier <code>private</code> dans l’archive de déploiement</td>
+</tr>
+<tr>
+<td>Clé API absente en production</td>
+<td style="text-align: right;">✅</td>
+<td>Tests de hardening fail-closed</td>
+</tr>
+<tr>
+<td>HMAC webhook</td>
+<td style="text-align: right;">✅</td>
+<td>Absence de signature et signature incorrecte refusées en live par HTTP 401</td>
+</tr>
+<tr>
+<td>JSON webhook invalide</td>
+<td style="text-align: right;">✅</td>
+<td>HTTP 400</td>
+</tr>
+<tr>
+<td>Corps HTTP trop grand</td>
+<td style="text-align: right;">✅</td>
+<td>HTTP 413 pour une taille supérieure à 1 Mo</td>
+</tr>
+<tr>
+<td>CORS exact / étranger</td>
+<td style="text-align: right;"><strong>2/2</strong></td>
+<td>HTTP 200 pour le domaine autorisé ; HTTP 403 pour <code>https://evil.example</code></td>
+</tr>
+<tr>
+<td>Backend mémoire production</td>
+<td style="text-align: right;">✅</td>
+<td><code>/api/health</code> retourne <code>memoire_backend: supabase</code></td>
+</tr>
+<tr>
+<td>Smoke test routes Meta sans identifiants</td>
+<td style="text-align: right;">✅</td>
+<td><code>/meta/status</code> 200 non connecté ; <code>/meta/oauth/start</code> 503 fail-closed ; webhook sans verify token 503 ; Facebook/Instagram non connectés</td>
+</tr>
+<tr>
+<td>Détection de secrets par Netlify</td>
+<td style="text-align: right;">✅</td>
+<td>Scan de build sans secret détecté</td>
+</tr>
+<tr>
+<td>Régressions fonctionnelles</td>
+<td style="text-align: right;">✅</td>
+<td>Cas de concurrence, idempotence, approbation, expiration, kill switch, cascade IA et dashboard couverts par la suite automatisée</td>
+</tr>
+</tbody>
+</table>
+<h2>CE QUI MANQUE</h2>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Où</th>
+<th>Quoi faire</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Créer l’application Meta</td>
+<td>Meta for Developers</td>
+<td>Créer l’application Facebook Login for Business, puis ajouter l’URI exacte <code>https://conquistadoros1.netlify.app/api/meta/oauth/callback</code>. Ne pas envoyer de mot de passe ni de secret dans la conversation.</td>
+</tr>
+<tr>
+<td>Configurer Meta côté serveur</td>
+<td>Netlify → Environment variables</td>
+<td>Ajouter uniquement les variables documentées dans <code>docs/META_FACEBOOK_INSTAGRAM_SETUP.md</code> : <code>META_APP_ID</code>, <code>META_APP_SECRET</code>, <code>META_OAUTH_REDIRECT_URI</code>, <code>META_TOKEN_ENCRYPTION_KEY</code>, <code>META_WEBHOOK_VERIFY_TOKEN</code> et <code>META_GRAPH_API_VERSION</code>.</td>
+</tr>
+<tr>
+<td>Autoriser Facebook + Instagram</td>
+<td>Dashboard → étape Facebook/Instagram</td>
+<td>Appuyer sur <code>Connecter via Meta</code>, accepter l’autorisation officielle, puis utiliser <code>Tester les tokens</code>. Les comptes resteront <code>NON CONNECTÉ</code> jusqu’à cette étape réelle.</td>
+</tr>
+<tr>
+<td>Connecter les autres réseaux sociaux</td>
+<td>Dashboard, étapes TikTok et WhatsApp</td>
+<td>Les connecteurs TikTok, WhatsApp et YouTube restent à traiter après la validation E2E Facebook/Instagram ; aucun identifiant inutile n’est demandé maintenant.</td>
+</tr>
+<tr>
+<td>Activer des fournisseurs IA réels si souhaité</td>
+<td>Variables d’environnement Netlify <code>GEMINI_API_KEY</code>, <code>GROQ_API_KEY</code> et/ou <code>OPENROUTER_API_KEY</code></td>
+<td>Renseigner uniquement les clés que l’utilisateur possède et redéployer. Sans ces clés, l’ordre reste correct et le fournisseur Mock demeure explicitement disponible.</td>
+</tr>
+<tr>
+<td>Utiliser un domaine personnalisé, si souhaité</td>
+<td>Netlify → Domain management</td>
+<td>Ajouter le domaine puis remplacer <code>ALLOWED_ORIGIN</code> par ce domaine HTTPS exact et redéployer. Le domaine Netlify actuel est déjà correctement autorisé.</td>
+</tr>
+</tbody>
+</table>
+<h2>CONCLUSION</h2>
+<p>Les défauts P0/P1 demandés sont corrigés et vérifiés. La production active utilise Supabase, applique le CORS côté serveur avec refus HTTP 403 des origines étrangères, exige la signature HMAC des webhooks, limite les corps HTTP à 1 Mo, conserve l’ordre IA unique et expose un onboarding en cinq étapes. L’infrastructure Facebook/Instagram est maintenant prête, avec OAuth, stockage chiffré, lecture, webhooks et actions soumises à approbation. Les seules étapes non exécutées sont celles qui nécessitent les identifiants et l’autorisation Meta réels ; aucune connexion fictive n’a été créée.</p>
+<h2>PIÈCES DE PREUVE</h2>
+<p>Le paquet de livraison comprend l’archive Meta prête à déployer, le rapport Markdown et HTML, le guide de connexion Meta, le journal webhook sans secret, le journal <code>npm test</code>, le résultat <code>node --check</code>, l’empreinte SHA-256 de l’archive et les preuves Supabase déjà collectées.</p></main></body></html>

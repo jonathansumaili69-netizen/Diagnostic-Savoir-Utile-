@@ -1,0 +1,5 @@
+Conquistador OS — vérification Meta finale
+
+Commande : npm test
+Résultat : 138 tests, 138 pass, 0 fail, 0 skipped, 0 cancelled.
+Dernier contrôle : statut Meta passe à non connecté lorsque la revalidation renvoie une erreur, sans exposer le token.

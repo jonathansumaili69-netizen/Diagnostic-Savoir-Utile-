@@ -1,0 +1,186 @@
+{
+  "result": {
+    "lints": [
+      {
+        "cache_key": "rls_enabled_no_policy_public_approvals",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.approvals\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "approvals",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_contacts",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.contacts\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "contacts",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_content",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.content\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "content",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_decisions",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.decisions\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "decisions",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_errors",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.errors\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "errors",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_events",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.events\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "events",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_executions",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.executions\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "executions",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_learnings",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.learnings\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "learnings",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_metrics",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.metrics\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "metrics",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      },
+      {
+        "cache_key": "rls_enabled_no_policy_public_tasks",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "detail": "Table \\`public.tasks\\` has RLS enabled, but no policies exist",
+        "facing": "EXTERNAL",
+        "level": "INFO",
+        "metadata": {
+          "name": "tasks",
+          "schema": "public",
+          "type": "table"
+        },
+        "name": "rls_enabled_no_policy",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy"
+      }
+    ]
+  }
+}

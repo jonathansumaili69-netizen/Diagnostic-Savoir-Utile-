@@ -1,0 +1,68 @@
+{
+  "name": "Conquistador OS - Relais commentaire (detection intention GUIDE)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "conquistador-nouveau-commentaire",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-1",
+      "name": "Webhook - nouveau commentaire",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://VOTRE-SITE.netlify.app/api/webhook/comment",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-conquistador-key",
+              "value": "REMPLACER_PAR_VOTRE_CLE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"commentaire\": $json.body.text, \"plateforme\": $json.body.platform, \"identifiant_auteur\": $json.body.author_id, \"nom_auteur\": $json.body.author_name, \"comment_id\": $json.body.comment_id } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-request-1",
+      "name": "Analyser l'intention dans Conquistador OS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - nouveau commentaire": {
+      "main": [
+        [
+          {
+            "node": "Analyser l'intention dans Conquistador OS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "A brancher sur l'integration recevant les nouveaux commentaires (ex: outil de veille reseaux sociaux). Detecte automatiquement une intention d'achat (mot-cle 'guide' par defaut) et prepare la reponse adaptee (message prive si un connecteur existe, sinon reponse au commentaire demandant d'ecrire en prive) - toujours soumise a approbation avant tout envoi/publication reel. IMPORTANT : comment_id est desormais obligatoire pour toute reponse publique (REPLY_COMMENT reste attachee au commentaire d'origine, jamais transformee en nouvelle publication) - sans lui, l'action est refusee explicitement plutot que simulee. Adapter les chemins $json.body.* au format reellement envoye par la source. Remplacer VOTRE-SITE.netlify.app et REMPLACER_PAR_VOTRE_CLE."
+  }
+}

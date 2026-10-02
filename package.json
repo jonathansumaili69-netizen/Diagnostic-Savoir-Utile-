@@ -1,0 +1,28 @@
+{
+  "name": "conquistador-os",
+  "version": "2.0.0",
+  "description": "Systeme agentique de Savoir Utile - moteur de production video complet : Character Registry officiel (Samuel/Marc) avec references versionnees, generation conditionnee par reference (provider image-to-image optionnel), controle de coherence visuelle PASS/REVIEW/FAIL, timeline multi-scenes sans plafond de duree (37/45/60/90 s), rendu FFmpeg verifie par ffprobe, jobs persistants, jonction planificateur<->video_jobs et publication reelle confirmee.",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "for f in tests/*.test.js; do node --test --test-concurrency=1 \"$f\" || exit 1; done",
+    "test:one": "node --test",
+    "dev": "netlify dev",
+    "seed": "node scripts/seed-knowledge.js",
+    "character:register": "node scripts/register-character-refs.js",
+    "verify:long-videos": "node scripts/verify-long-videos.js",
+    "diagnostics": "node scripts/diagnostics-video-engine.js"
+  },
+  "dependencies": {
+    "@netlify/functions": "^2.8.2",
+    "@supabase/supabase-js": "^2.45.4",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.38.0"
+  },
+  "license": "UNLICENSED"
+}
