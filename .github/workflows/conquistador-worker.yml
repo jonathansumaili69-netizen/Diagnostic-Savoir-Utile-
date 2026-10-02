@@ -58,7 +58,7 @@ jobs:
       # Bucket media canonique du projet (identique a .env.example)
       SUPABASE_MEDIA_BUCKET: conquistador-media
       KILL_SWITCH_DEFAULT: "false"
-      CONQUISTADOR_DATA_DIR: ${{ runner.temp }}/conquistador-data
+      CONQUISTADOR_DATA_DIR: /tmp/conquistador-data
     steps:
       - name: Checkout du depot
         uses: actions/checkout@v4
