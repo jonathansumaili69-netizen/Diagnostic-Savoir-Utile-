@@ -22,6 +22,15 @@
       "parameters": {
         "method": "GET",
         "url": "https://VOTRE-SITE.netlify.app/api/report/daily",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-conquistador-key",
+              "value": "={{ $credentials.conquistadorApiKey }}"
+            }
+          ]
+        },
         "options": {
           "timeout": 30000
         }
@@ -51,6 +60,6 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "description": "Alternative de secours a la fonction planifiee Netlify (report-daily-scheduled.js) si les scheduled functions deviennent indisponibles. Remplacer VOTRE-SITE.netlify.app par le domaine reel du deploiement. Cet appel ne necessite pas de cle API car GET /api/report/daily est un endpoint de lecture, mais peut etre proge par un en-tete x-conquistador-key ajoute dans les options HTTP Request si souhaite."
+    "description": "Alternative de secours a la fonction planifiee Netlify (report-daily-scheduled.js) si les scheduled functions deviennent indisponibles. Remplacer VOTRE-SITE.netlify.app par le domaine reel du deploiement et associer au noeud HTTP Request une credential n8n exposee via $credentials.conquistadorApiKey (header x-conquistador-key). Ne jamais coller la cle directement dans le workflow exporte."
   }
 }

@@ -8,6 +8,7 @@ exports.handler = wrapHandler(async (event) => {
   checkRateLimit(getRateLimitKey(event.headers));
 
   if (event.httpMethod === 'GET') {
+    assertApiKey(event.headers);
     return json(200, { connecteurs: await socialConnectors.getDynamicSnapshot() });
   }
 

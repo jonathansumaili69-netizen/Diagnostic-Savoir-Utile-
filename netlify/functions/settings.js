@@ -7,6 +7,7 @@ const operationalState = require('../../src/core/operationalState');
 exports.handler = wrapHandler(async (event) => {
   checkRateLimit(getRateLimitKey(event.headers));
   if (event.httpMethod === 'GET') {
+    assertApiKey(event.headers);
     return json(200, {
       settings: await operationalState.getSettings(),
       modes: operationalState.MODES,

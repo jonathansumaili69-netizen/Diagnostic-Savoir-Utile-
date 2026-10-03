@@ -1,7 +1,7 @@
 'use strict';
 
 const { json, wrapHandler } = require('../../src/utils/http');
-const { checkRateLimit, getRateLimitKey} = require('../../src/core/validation');
+const { assertApiKey, checkRateLimit, getRateLimitKey} = require('../../src/core/validation');
 const memory = require('../../src/core/memory');
 const approval = require('../../src/core/approval');
 const statistiques = require('../../src/agents/statistiques');
@@ -11,6 +11,7 @@ const chariow = require('../../src/core/chariow');
 const timezones = require('../../src/core/timezones');
 
 exports.handler = wrapHandler(async (event) => {
+  assertApiKey(event.headers);
   checkRateLimit(getRateLimitKey(event.headers));
 
   const [

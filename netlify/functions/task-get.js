@@ -1,10 +1,11 @@
 'use strict';
 
 const { json, wrapHandler } = require('../../src/utils/http');
-const { requireString, checkRateLimit, getRateLimitKey} = require('../../src/core/validation');
+const { assertApiKey, requireString, checkRateLimit, getRateLimitKey} = require('../../src/core/validation');
 const taskEngine = require('../../src/core/taskEngine');
 
 exports.handler = wrapHandler(async (event) => {
+  assertApiKey(event.headers);
   checkRateLimit(getRateLimitKey(event.headers));
   const params = event.queryStringParameters || {};
   const id = requireString(params.id, 'id');

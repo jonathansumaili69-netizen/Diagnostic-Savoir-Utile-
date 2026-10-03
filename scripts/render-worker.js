@@ -71,21 +71,33 @@ async function processOnce() {
   const jobs = await findWork();
   if (jobs.length === 0) {
     logger.info('render-worker: aucun job en attente.');
-    return 0;
+    return { advanced: 0, failed: 0 };
   }
   logger.info(`render-worker: ${jobs.length} job(s) a faire avancer.`);
   let advanced = 0;
+  let failed = 0;
   for (const job of jobs) {
     try {
       // eslint-disable-next-line no-await-in-loop
       const updated = await videoOrchestrator.processJob(job.id);
-      logger.info('render-worker: job avance', { job_id: job.id, statut: updated.status, progress: updated.progress });
-      advanced += 1;
+      if (!updated || updated.status === 'FAILED') {
+        failed += 1;
+        logger.error('render-worker: job termine en echec', {
+          job_id: job.id,
+          statut: updated && updated.status ? updated.status : 'aucun resultat',
+          etape: updated && updated.error_step ? updated.error_step : null,
+        });
+      } else {
+        logger.info('render-worker: job avance', { job_id: job.id, statut: updated.status, progress: updated.progress });
+        advanced += 1;
+      }
     } catch (err) {
+      failed += 1;
       logger.error('render-worker: echec en traitant un job', { job_id: job.id, error: err.message });
     }
   }
-  return advanced;
+  logger.info('render-worker: passage termine', { advanced, failed });
+  return { advanced, failed };
 }
 
 async function main() {
@@ -100,8 +112,8 @@ async function main() {
   }
 
   if (args.once) {
-    await processOnce();
-    process.exit(0);
+    const result = await processOnce();
+    process.exit(result.failed > 0 ? 1 : 0);
     return;
   }
 

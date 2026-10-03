@@ -48,13 +48,38 @@ test('findWork: aucun job en attente sur un stockage vide', async () => {
 });
 
 test('processOnce: aucun job -> 0 job avance, aucune erreur, aucune invention', async () => {
-  const advanced = await renderWorker.processOnce();
-  assert.equal(advanced, 0);
+  const result = await renderWorker.processOnce();
+  assert.deepEqual(result, { advanced: 0, failed: 0 });
 });
 
 test('double lancement consecutif sans job: idempotent (0 puis 0)', async () => {
   const first = await renderWorker.processOnce();
   const second = await renderWorker.processOnce();
-  assert.equal(first, 0);
-  assert.equal(second, 0);
+  assert.deepEqual(first, { advanced: 0, failed: 0 });
+  assert.deepEqual(second, { advanced: 0, failed: 0 });
+});
+
+test('processOnce: un job retourne FAILED et marque le passage en échec', async () => {
+  const videoJobs = require('../src/core/videoJobs');
+  const orchestrator = require('../src/core/videoOrchestrator');
+  const renderer = require('../src/core/videoRenderer');
+  const original = {
+    listJobs: videoJobs.listJobs,
+    processJob: orchestrator.processJob,
+    isAvailable: renderer.isAvailable,
+  };
+  try {
+    videoJobs.listJobs = async ({ status }) => status === 'QUEUED'
+      ? [{ id: 'synthetic-failed-job', created_at: new Date().toISOString() }]
+      : [];
+    orchestrator.processJob = async () => ({ id: 'synthetic-failed-job', status: 'FAILED', error_step: 'RENDERING' });
+    renderer.isAvailable = async () => true;
+
+    const result = await renderWorker.processOnce();
+    assert.deepEqual(result, { advanced: 0, failed: 1 });
+  } finally {
+    videoJobs.listJobs = original.listJobs;
+    orchestrator.processJob = original.processJob;
+    renderer.isAvailable = original.isAvailable;
+  }
 });

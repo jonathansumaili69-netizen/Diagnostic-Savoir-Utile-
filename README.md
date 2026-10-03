@@ -29,7 +29,7 @@ node scripts/render-worker.js --job=<id> # traite un job précis jusqu'à comple
 node scripts/render-worker.js --interval=30000
 ```
 
-Prérequis machine : `ffmpeg` + `ffprobe` installés, Node ≥ 18 (20 en CI), et les variables Supabase pour le stockage durable.
+Le mode `--once` renvoie maintenant un code de sortie non nul si un job échoue ou termine en `FAILED`; le mode continu journalise les échecs et poursuit les autres jobs. Prérequis machine : `ffmpeg` + `ffprobe` installés, Node ≥ 22, et les variables Supabase pour le stockage durable.
 
 ## Architecture générale
 
@@ -81,6 +81,13 @@ Voir **`.env.example`** pour la liste exhaustive et documentée. En résumé pou
 ### Secrets GitHub à configurer (Settings → Secrets and variables → Actions)
 
 Secrets requis pour traiter la file de production : `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`. Facultatifs selon le chemin utilisé : `HF_TOKEN` (sinon repli officiel `existing_asset`), `VOICE_STUDIO_API_URL` (sinon voix indisponible signalée honnêtement), `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` (providers IA optionnels). Ils sont injectés uniquement dans les étapes qui en ont besoin ; le préflight n’affiche que les noms manquants, jamais leurs valeurs.
+
+## Accès API et données privées
+
+- `CONQUISTADOR_API_KEY` est exigée par l’API pour les lectures et écritures contenant des données métier : tableau de bord, tâches, approbations, jobs vidéo, réglages, connecteurs, objectifs, diagnostics détaillés, fournisseurs IA et rapport quotidien. Le navigateur l’envoie dans `x-conquistador-key`; elle est conservée dans le stockage local du navigateur qui l’a saisie.
+- `GET /api/health` reste public pour la supervision et ne renvoie que des états de service, jamais une clé. La clé ne doit jamais être intégrée au JavaScript servi ni committée.
+- Le flux n8n `docs/n8n-workflows/daily-report.json` exige une credential n8n `conquistadorApiKey` pour l’en-tête `x-conquistador-key`; ne pas inscrire la clé en clair dans le JSON exporté.
+- Cette clé est un secret **partagé** : elle protège contre les appels anonymes, mais ne fournit pas d’identités individuelles ni de rôles. Tout détenteur autorisé de la clé dispose du même accès aux données du projet.
 
 ## Limites connues
 

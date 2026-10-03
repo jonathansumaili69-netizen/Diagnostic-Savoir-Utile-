@@ -13,6 +13,7 @@ const taskEngine = require('../../src/core/taskEngine');
  * besoin, mais /api/tasks passe desormais par ce point d'entree unifie.
  */
 async function handleList(event) {
+  assertApiKey(event.headers);
   checkRateLimit(getRateLimitKey(event.headers));
   const params = event.queryStringParameters || {};
   const limit = params.limit ? parseInt(params.limit, 10) : 50;

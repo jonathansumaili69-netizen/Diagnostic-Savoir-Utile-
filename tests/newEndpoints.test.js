@@ -40,11 +40,14 @@ function body(response) {
 const authHeaders = { origin: 'http://localhost:8890', 'x-conquistador-key': 'endpoint-test-key' };
 
 
-test('settings GET reste non sensible et settings PUT exige la clé', async () => {
+test('settings GET et PUT exigent la clé', async () => {
   const publicResponse = await settings.handler(event());
-  assert.equal(publicResponse.statusCode, 200);
-  assert.equal(JSON.stringify(body(publicResponse)).includes('endpoint-test-key'), false);
-  assert.equal(JSON.stringify(body(publicResponse)).includes('service_role'), false);
+  assert.equal(publicResponse.statusCode, 401);
+
+  const authenticatedRead = await settings.handler(event({ headers: authHeaders }));
+  assert.equal(authenticatedRead.statusCode, 200);
+  assert.equal(JSON.stringify(body(authenticatedRead)).includes('endpoint-test-key'), false);
+  assert.equal(JSON.stringify(body(authenticatedRead)).includes('service_role'), false);
 
   const refused = await settings.handler(event({ httpMethod: 'PUT', body: JSON.stringify({ mode: 'copilot' }) }));
   assert.equal(refused.statusCode, 401);

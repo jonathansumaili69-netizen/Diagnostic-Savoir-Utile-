@@ -11,6 +11,7 @@ const videoOrchestrator = require('../../src/core/videoOrchestrator');
  */
 
 async function handleList(event) {
+  assertApiKey(event.headers);
   checkRateLimit(getRateLimitKey(event.headers));
   const params = event.queryStringParameters || {};
   const limit = params.limit ? parseInt(params.limit, 10) : 50;

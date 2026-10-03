@@ -8,6 +8,7 @@ const statistiques = require('../../src/agents/statistiques');
 exports.handler = wrapHandler(async (event) => {
   checkRateLimit(getRateLimitKey(event.headers));
   if (event.httpMethod === 'GET') {
+    assertApiKey(event.headers);
     const [objectifs, progres] = await Promise.all([
       operationalState.getWeeklyObjectives(),
       statistiques.weeklyProgress({}),
