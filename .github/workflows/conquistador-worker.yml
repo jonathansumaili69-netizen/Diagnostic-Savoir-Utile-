@@ -1,5 +1,4 @@
 name: Conquistador Render Worker
-
 # Worker EPHEMERE : demarre, recupere les jobs video en attente, les fait
 # avancer via le point d'entree EXISTANT (scripts/render-worker.js, qui
 # reutilise src/core/videoOrchestrator.js — aucun orchestrateur parallele),
@@ -16,9 +15,14 @@ on:
   workflow_dispatch:
     inputs:
       job_id:
-        description: "ID d'un job precis a traiter jusqu'a completion (optionnel ; vide = tous les jobs en attente, un seul passage)"
+        description: "ID d'un job precis a traiter jusqu'a completion (optionnel ; vide = file d'attente)"
         required: false
         type: string
+      validate_only:
+        description: "Syntaxe, dependances et tests seulement ; aucun service externe ni Worker"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -34,28 +38,14 @@ jobs:
     name: Traitement des video_jobs
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Seule la configuration non sensible est commune a toutes les etapes.
+    # Les secrets sont limites aux commandes qui en ont besoin.
     env:
-      # --- Secrets GitHub obligatoires (Settings > Secrets and variables > Actions) ---
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-      VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
-      # --- Secrets optionnels selon les providers reellement utilises ---
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      # --- Generation d'images conditionnee par reference (Hugging Face) ---
-      # HF_TOKEN provient EXCLUSIVEMENT de GitHub Secrets (Settings > Secrets
-      # and variables > Actions) : jamais dans le depot, jamais expose au
-      # frontend. Si le secret est absent, le provider HF est ignore proprement
-      # et la chaine retombe sur l'asset officiel (existing_asset).
       IMAGE_IMG2IMG_PROVIDER: huggingface
-      HF_TOKEN: ${{ secrets.HF_TOKEN }}
       IMAGE_IMG2IMG_MODEL: black-forest-labs/FLUX.1-Kontext-dev
-      # --- Configuration non sensible ---
       VOICE_PROVIDER: edge-tts
       VOICE_NAME: Rémy Neural
       VOICE_STUDIO_TIMEOUT_MS: "20000"
-      # Bucket media canonique du projet (identique a .env.example)
       SUPABASE_MEDIA_BUCKET: conquistador-media
       KILL_SWITCH_DEFAULT: "false"
       CONQUISTADOR_DATA_DIR: /tmp/conquistador-data
@@ -63,10 +53,10 @@ jobs:
       - name: Checkout du depot
         uses: actions/checkout@v4
 
-      - name: Node.js 20
+      - name: Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Installation des dependances (reproductible)
@@ -84,18 +74,43 @@ jobs:
           find src scripts netlify tests -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           npm test
 
-      - name: Etat du provider image-to-image (Hugging Face)
-        run: |
-          node -e "const st=require('./src/core/imageProviders/providerAdapter').status(); console.log(JSON.stringify({configure:st.configure,provider:st.provider,cle_detectee:st.cle_detectee})); if(!st.configure){console.warn('Hugging Face non configure (secret HF_TOKEN absent) - repli officiel existing_asset.');}"
+      - name: Preflight des secrets Worker (aucune valeur affichee)
+        id: worker-preflight
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
+          IMAGE_IMG2IMG_PROVIDER: huggingface
+          WORKER_VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.validate_only == true }}
+        run: node scripts/worker-preflight.js
 
-      - name: Sante Voice Studio (externe)
-        run: node -e "require('./src/core/voiceStudio').health().then(h=>{console.log(JSON.stringify(h)); if(!h.available){console.warn('Voice Studio indisponible — les jobs marqueront VOICE_UNAVAILABLE honnetement.');}})"
+      - name: Etat du provider image-to-image (Hugging Face)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          IMAGE_IMG2IMG_PROVIDER: huggingface
+          IMAGE_IMG2IMG_MODEL: black-forest-labs/FLUX.1-Kontext-dev
+        run: |
+          node -e "const s=require('./src/core/imageProviders/providerAdapter').status(); console.log(JSON.stringify({configured:s.configure,provider:s.provider,token_present:s.cle_detectee,model:s.modele}));"
+
+      - name: Sante Voice Studio (externe, sortie assainie)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
         env:
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
+        run: |
+          node -e "require('./src/core/voiceStudio').health().then(h=>{console.log(JSON.stringify({configured:h.configured,available:h.available,provider:h.provider,voice:h.voice})); if(!h.available) console.warn('Voice Studio indisponible; aucun detail de connexion n est journalise.');})"
 
       - name: Execution du worker (ephemere, un passage)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
         env:
-          WORKER_JOB_ID: ${{ inputs.job_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          WORKER_JOB_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.job_id || '' }}
         run: |
           if [ -n "$WORKER_JOB_ID" ]; then
             node scripts/render-worker.js --job="$WORKER_JOB_ID"

@@ -5,7 +5,7 @@
   "private": true,
   "type": "commonjs",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "test": "for f in tests/*.test.js; do node --test --test-concurrency=1 \"$f\" || exit 1; done",

@@ -8,7 +8,7 @@ systeme deploye et utilisable depuis un telephone Android.
 
 ## Etape 0 - Prerequis
 
-- Node.js 18 ou plus recent installe sur votre machine (`node --version`).
+- Node.js 22 ou plus recent installe sur votre machine (`node --version`). Le SDK Supabase verrouille dans `package-lock.json` requiert Node.js >=22.
 - Un compte GitHub (ou GitLab/Bitbucket) pour heberger le code — Netlify
   deploie depuis un depot Git.
 - Un compte Netlify gratuit (https://app.netlify.com).

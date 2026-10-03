@@ -61,7 +61,7 @@ Voir **`.env.example`** pour la liste exhaustive et documentée. En résumé pou
 
 | Variable | Rôle | Obligatoire |
 |---|---|---|
-| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Persistance jobs + storage durable (service_role, serveur uniquement) | pour marquer un job COMPLETED |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Accès à la file persistante des jobs et au stockage durable (serveur uniquement) | requis pour le Worker de production |
 | `SUPABASE_MEDIA_BUCKET` | Bucket Storage média (défaut projet : `conquistador-media`) | non (fallback local honnête) |
 | `HF_TOKEN` | Provider image-to-image Hugging Face — **serveur uniquement, jamais exposé** | non (repli `existing_asset`) |
 | `IMAGE_IMG2IMG_MODEL` | Modèle img2img (défaut : `black-forest-labs/FLUX.1-Kontext-dev`) | non |
@@ -75,11 +75,12 @@ Voir **`.env.example`** pour la liste exhaustive et documentée. En résumé pou
 - **Planification automatique toutes les 5 heures** : `cron: "0 */5 * * *"` (00:00, 05:00, 10:00, 15:00, 20:00 UTC) ;
 - **Déclenchement manuel** `workflow_dispatch` conservé, avec `job_id` optionnel ;
 - permissions minimales (`contents: read`), `concurrency` anti double exécution, timeout 45 min ;
-- étapes : checkout → Node 20 + `npm ci` → installation FFmpeg/ffprobe → vérifications (syntaxe + tests worker/orchestrateur/renderer/quality-check) → statut provider HF (sans afficher le token) → santé Voice Studio → **exécution réelle** `node scripts/render-worker.js --once` (ou `--job=<id>`).
+- étapes : checkout → Node 22 + `npm ci` → installation FFmpeg/ffprobe → syntaxe et suite complète `npm test` → préflight sans affichage de valeurs secrètes → état HF → vérification Voice Studio → **exécution** via `scripts/render-worker.js` (qui réutilise `videoOrchestrator`). Si l’URL ou la clé de service Supabase manque, le Worker de production est bloqué avant traitement.
+- `workflow_dispatch` expose `validate_only: true` pour vérifier installation, syntaxe, tests et préflight sans appeler les services externes ni démarrer le Worker.
 
 ### Secrets GitHub à configurer (Settings → Secrets and variables → Actions)
 
-`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `VOICE_STUDIO_API_URL`, `HF_TOKEN`, et selon les providers : `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`. Aucun secret n'est jamais commité ni affiché dans les logs ; si `HF_TOKEN` est absent, le provider est ignoré proprement (repli officiel).
+Secrets requis pour traiter la file de production : `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`. Facultatifs selon le chemin utilisé : `HF_TOKEN` (sinon repli officiel `existing_asset`), `VOICE_STUDIO_API_URL` (sinon voix indisponible signalée honnêtement), `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` (providers IA optionnels). Ils sont injectés uniquement dans les étapes qui en ont besoin ; le préflight n’affiche que les noms manquants, jamais leurs valeurs.
 
 ## Limites connues
 
