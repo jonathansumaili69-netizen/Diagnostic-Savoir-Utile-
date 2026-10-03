@@ -36,7 +36,7 @@ concurrency:
 jobs:
   render:
     name: Traitement des video_jobs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     # Seule la configuration non sensible est commune a toutes les etapes.
     # Les secrets sont limites aux commandes qui en ont besoin.
