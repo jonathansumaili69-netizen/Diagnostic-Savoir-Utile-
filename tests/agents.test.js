@@ -114,7 +114,7 @@ test('video.review: accepte une inspection Gemini vidéo réussie sans autoriser
   const previousKey = config.ai.geminiApiKey;
   const previousModel = config.ai.geminiModel;
   config.ai.geminiApiKey = 'test-only-not-a-real-secret';
-  config.ai.geminiModel = 'gemini-2.5-flash';
+  config.ai.geminiModel = 'gemini-3.5-flash-lite';
   global.fetch = async (url, options) => {
     assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/interactions');
     assert.equal(options.headers['x-goog-api-key'], 'test-only-not-a-real-secret');

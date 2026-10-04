@@ -23,18 +23,16 @@ const config = {
 
   ai: {
     groqApiKey: process.env.GROQ_API_KEY || '',
-    groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    groqModel: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
+    groqAllowPaid: bool(process.env.GROQ_ALLOW_PAID, false),
     geminiApiKey: process.env.GEMINI_API_KEY || '',
-    // gemini-2.0-flash a ete retire le 3 mars 2026 ; gemini-2.5-flash est le
-    // choix gratuit recommande a la date de redaction (aout 2026). Verifier
-    // https://ai.google.dev/pricing si ce nom de modele venait a changer.
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    // OpenRouter : troisieme fournisseur gratuit (voir docs/AI_PROVIDERS.md
-    // pour la justification). Le roster de modeles ":free" tourne dans le
-    // temps ; verifier https://openrouter.ai/models?max_price=0 si ce nom
-    // de modele devient indisponible.
+    // Modèle Google documenté comme stable et gratuit dans le palier Free.
+    // Contrôler la liste et la tarification officielle avant une mise à jour.
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    // OpenRouter : choisir explicitement un modèle marqué :free. Le roster
+    // tourne dans le temps; vérifier le catalogue public avant production.
     openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
-    openrouterModel: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free',
+    openrouterModel: process.env.OPENROUTER_MODEL || 'qwen/qwen3.8-27b:free',
   },
 
   memory: {

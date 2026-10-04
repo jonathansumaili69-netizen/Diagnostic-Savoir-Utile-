@@ -18,16 +18,17 @@ Ne jamais utiliser `ALLOWED_ORIGIN=*` comme configuration finale. `SUPABASE_SERV
 
 ## 2. Fournisseurs IA — ordre canonique obligatoire
 
-Le routage reste **Gemini → Groq → OpenRouter → Mock**. Le fournisseur réellement utilisé est enregistré dans les résultats et le journal. Mock est un repli local explicitement signalé, pas une génération distante.
+Le routage usuel est **Gemini → Groq (seulement avec opt-in payant) → OpenRouter → Mock**. Le profil strict vidéo utilise **Gemini → OpenRouter → Mock** et son garde-fou refuse Mock. Le fournisseur réellement utilisé est enregistré dans les résultats et le journal.
 
 | Nom exact | Valeur non secrète éventuelle | Rôle |
 |---|---|---|
 | `GEMINI_API_KEY` | Clé saisie directement dans Netlify | Premier fournisseur et inspection vidéo audiovisuelle si URL publique accessible |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Modèle Gemini |
-| `GROQ_API_KEY` | Clé saisie directement dans Netlify | Repli 2 |
-| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Modèle Groq |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Modèle stable au tarif « Free of charge » selon la page officielle Google |
+| `GROQ_API_KEY` | Clé saisie directement dans Netlify | Modèle payant, non utilisé sans opt-in |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Modèle actif Groq, prix au token |
+| `GROQ_ALLOW_PAID` | `false` | Ne passer à `true` qu’après accord explicite de facturation; sans opt-in, Conquistador n’appelle pas Groq |
 | `OPENROUTER_API_KEY` | Clé saisie directement dans Netlify | Repli 3 facultatif |
-| `OPENROUTER_MODEL` | `meta-llama/llama-3.3-70b-instruct:free` | Modèle OpenRouter facultatif |
+| `OPENROUTER_MODEL` | `qwen/qwen3.8-27b:free` | Modèle gratuit actuellement listé, roster susceptible de changer |
 
 Sans clé Gemini et sans URL vidéo HTTPS réellement accessible, le contrôleur ne prétend pas avoir inspecté les pixels, l’audio ou le binaire vidéo. Les métadonnées seules ne suffisent pas à déclarer une vidéo conforme.
 

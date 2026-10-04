@@ -6,9 +6,11 @@ const assert = require('node:assert/strict');
 delete process.env.GROQ_API_KEY;
 delete process.env.GEMINI_API_KEY;
 delete process.env.OPENROUTER_API_KEY;
+delete process.env.GROQ_ALLOW_PAID;
 
 const aiProviders = require('../src/core/aiProviders');
 const aiProvider = require('../src/core/aiProvider');
+const { config } = require('../src/core/config');
 
 test('PROVIDER_DEFINITIONS: chaque fournisseur a des scores justifies (1-5) sur toutes les dimensions requises', () => {
   const requiredDimensions = ['raisonnement', 'vitesse', 'fiabilite', 'contexte', 'quota_gratuit', 'disponibilite'];
@@ -43,6 +45,10 @@ test('chainForProfile: mock est toujours en dernier, quel que soit le profil', (
 
 test('chainForProfile: un profil inconnu retombe sur la chaine par defaut', () => {
   assert.deepEqual(aiProviders.chainForProfile('profil_qui_n_existe_pas'), aiProviders.chainForProfile('default'));
+});
+
+test('chainForProfile: strict_video exclut Groq payant et conserve Mock en dernier recours', () => {
+  assert.deepEqual(aiProviders.chainForProfile('strict_video'), ['gemini', 'openrouter', 'mock']);
 });
 
 test('isConfigured: mock est toujours considere configure (aucune cle requise)', () => {
@@ -81,6 +87,24 @@ test('generate(): respecte un profil de routage explicite dans la cascade tentee
   const result = await aiProvider.generate({ prompt: 'test profil fast', profile: 'fast' });
   assert.equal(result.profile, 'fast');
   assert.deepEqual(result.attempts.map((a) => a.provider), ['groq', 'gemini', 'openrouter']);
+});
+
+test('generate(): saute Groq payant avec une clé présente mais sans opt-in explicite', async () => {
+  const previousKey = config.ai.groqApiKey;
+  const previousAllowPaid = config.ai.groqAllowPaid;
+  config.ai.groqApiKey = 'test-placeholder-ne-pas-appeler';
+  config.ai.groqAllowPaid = false;
+  try {
+    const result = await aiProvider.generate({ prompt: 'test opt-in facturation', profile: 'default' });
+    assert.equal(result.provider, 'mock');
+    const skipped = result.attempts.find((attempt) => attempt.provider === 'groq');
+    assert.equal(skipped.errorType, 'payant_desactive');
+    assert.match(skipped.error, /GROQ_ALLOW_PAID=false/);
+    assert.equal(aiProviders.isConfigured('groq'), false);
+  } finally {
+    config.ai.groqApiKey = previousKey;
+    config.ai.groqAllowPaid = previousAllowPaid;
+  }
 });
 
 test('callOpenRouter: echoue proprement si OPENROUTER_API_KEY est absente', async () => {

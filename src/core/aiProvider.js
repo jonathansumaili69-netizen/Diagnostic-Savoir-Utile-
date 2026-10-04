@@ -255,7 +255,7 @@ async function callWithRetry(fn, args, providerName) {
  * voir aiProviders.js) est saute sans etre reellement appele - protection
  * contre les boucles de fallback inutiles.
  *
- * @param {string} [profile] - 'reasoning' | 'fast' | 'long_context' | 'simple' | undefined (defaut)
+ * @param {string} [profile] - 'reasoning' | 'fast' | 'long_context' | 'simple' | 'strict_video' | undefined (defaut)
  */
 async function generate({ system, prompt, temperature, maxTokens, profile } = {}) {
   if (!prompt || typeof prompt !== 'string') {
@@ -266,6 +266,15 @@ async function generate({ system, prompt, temperature, maxTokens, profile } = {}
   for (const name of chainOrder) {
     const fn = PROVIDER_FUNCTIONS[name];
     if (!fn) continue;
+
+    // Groq ne publie plus de modèle Developer gratuit dans son catalogue
+    // actuel. Une clé seule n'autorise donc jamais un appel potentiellement
+    // facturable; le propriétaire doit activer explicitement l'opt-in.
+    if (name === 'groq' && config.ai.groqApiKey && !config.ai.groqAllowPaid) {
+      attempts.push({ provider: name, error: 'Provider payant désactivé (GROQ_ALLOW_PAID=false)', errorType: 'payant_desactive' });
+      logger.warn('aiProvider: Groq ignoré pour éviter un appel facturable sans opt-in', {});
+      continue;
+    }
 
     if (aiProviders.isTemporarilyUnavailable(name)) {
       attempts.push({ provider: name, error: 'Fournisseur temporairement indisponible (desactive ou circuit ouvert)', errorType: 'indisponible_temporairement' });

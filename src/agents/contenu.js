@@ -118,7 +118,14 @@ async function fullVideo(input) {
     '"texte_ecran": [...], "voix_off": "...", "cta": "...", "description": "...",',
     '"hashtags": [...], "idee_miniature": "..." }',
   ].join('\n');
-  const result = await askAI({ system: SYSTEM, prompt, expectJson: true, temperature: 0.8, maxTokens: 2048 });
+  const result = await askAI({
+    system: SYSTEM,
+    prompt,
+    expectJson: true,
+    temperature: 0.8,
+    maxTokens: 2048,
+    profile: strictProduction ? 'strict_video' : undefined,
+  });
   return {
     type: 'content.full_video',
     provider: result.provider,

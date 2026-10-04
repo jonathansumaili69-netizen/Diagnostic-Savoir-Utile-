@@ -7,7 +7,7 @@ const { logger } = require('./logger');
  * AI_PROVIDERS — registre des fournisseurs IA disponibles pour Conquistador OS.
  *
  * Chaque score ci-dessous n'est PAS invente : il est derive de faits verifies
- * par recherche web (aout 2026, sources officielles et independantes
+ * par recherche web (octobre 2026, sources officielles et independantes
  * convergentes) et documente en detail dans docs/AI_PROVIDERS.md. Echelle
  * qualitative 1 (faible) a 5 (eleve) — volontairement qualitative plutot que
  * de fausses precisions numeriques (ex: "87.3/100") qui n'auraient aucune
@@ -31,7 +31,7 @@ const PROVIDER_DEFINITIONS = [
     name: 'Google Gemini',
     model: () => config.ai.geminiModel,
     gratuit: true,
-    quota: '~10-15 requetes/min, quota journalier variable selon modele (palier Free Google AI Studio)',
+    quota: 'Palier Free à limites variables par modèle, compte et région; vérifier la page officielle de tarification',
     capacite: 'Contexte tres large (jusqu\'a ~1M tokens selon le modele), multimodal',
     scores: {
       raisonnement: 4,
@@ -49,19 +49,19 @@ const PROVIDER_DEFINITIONS = [
     id: 'groq',
     name: 'Groq',
     model: () => config.ai.groqModel,
-    gratuit: true,
-    quota: '~30 requetes/min, quota tokens/jour variable selon modele (palier Free)',
-    capacite: 'Debit tres eleve (materiel LPU dedie), contexte correct pour un modele open-weight (Llama 3.3 70B)',
+    gratuit: false,
+    quota: 'Modèle GPT-OSS 120B facturé au token; appels désactivés par défaut, opt-in GROQ_ALLOW_PAID=true',
+    capacite: 'Débit LPU élevé; modèle actif openai/gpt-oss-120b (tarification à vérifier avant opt-in)',
     scores: {
       raisonnement: 3,
       vitesse: 5,
       fiabilite: 4,
       contexte: 3,
-      quota_gratuit: 3,
+      quota_gratuit: 1,
       disponibilite: 4,
     },
     justification:
-      "Le plus rapide du groupe de tres loin (materiel d'inference dedie), fiabilite de service correcte, mais raisonnement et contexte legerement en retrait par rapport a Gemini sur un modele generaliste 70B.",
+      "Route d'inférence rapide, mais son modèle de remplacement actif est facturé au token. Une clé présente ne déclenche pas d'appel sans opt-in GROQ_ALLOW_PAID=true.",
     requiresKey: 'GROQ_API_KEY',
   },
   {
@@ -69,7 +69,7 @@ const PROVIDER_DEFINITIONS = [
     name: 'OpenRouter (modeles :free)',
     model: () => config.ai.openrouterModel,
     gratuit: true,
-    quota: '20 requetes/min, 50-1000 requetes/JOUR selon credits achetes (le plus restrictif du groupe)',
+    quota: 'Modèles :free à quotas d’usage variables; vérifier le catalogue et les limites du compte',
     capacite: 'Variable : agregateur de modeles gratuits dont la liste tourne dans le temps (roster non garanti stable)',
     scores: {
       raisonnement: 3,
@@ -205,18 +205,16 @@ function isConfigured(providerId) {
   if (!def) return false;
   if (!def.requiresKey) return true; // mock
   if (def.requiresKey === 'GEMINI_API_KEY') return Boolean(config.ai.geminiApiKey);
-  if (def.requiresKey === 'GROQ_API_KEY') return Boolean(config.ai.groqApiKey);
+  if (def.requiresKey === 'GROQ_API_KEY') return Boolean(config.ai.groqApiKey && config.ai.groqAllowPaid);
   if (def.requiresKey === 'OPENROUTER_API_KEY') return Boolean(config.ai.openrouterApiKey);
   return false;
 }
 
 /**
  * Profils de tache pour le routage intelligent (section 5 du prompt maitre).
- * Chaque profil reordonne la chaine de fournisseurs REELS (mock reste
- * toujours en dernier recours absolu) selon le critere le plus pertinent
- * pour ce type de tache, sans jamais exclure un fournisseur : si le
- * fournisseur preferentiel echoue, la cascade continue normalement vers les
- * suivants (voir aiProvider.js).
+ * Chaque profil choisit et ordonne sa chaîne selon la tâche et ses garde-fous
+ * de coût. Mock reste toujours en dernier recours absolu; strict_video exclut
+ * intentionnellement Groq même si un administrateur a opté pour le payant.
  */
 const TASK_PROFILES = {
   // Analyse complexe : privilegier le meilleur raisonnement + le plus grand contexte.
@@ -227,6 +225,9 @@ const TASK_PROFILES = {
   long_context: ['gemini', 'groq', 'openrouter'],
   // Tache simple/legere : n'importe quel fournisseur suffit, economiser le plus "rare" (Gemini/Groq) pour plus tard.
   simple: ['openrouter', 'groq', 'gemini'],
+  // Le profil strict de production n'utilise que des routes dont le modèle
+  // sélectionné est documenté gratuit; Groq est exclu même avec opt-in.
+  strict_video: ['gemini', 'openrouter'],
   // Par defaut (aucun profil precise) : ordre de base demande explicitement par l'utilisateur.
   default: ['gemini', 'groq', 'openrouter'],
 };
