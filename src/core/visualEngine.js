@@ -36,12 +36,15 @@ const { logger } = require('./logger');
  */
 
 function cacheParamsFor(scene, width, height) {
+  const provider = imageProviders.referenceProviderStatus();
   return {
     prompt: scene.prompt_final || scene.description || scene.voix_off_scene || '',
     width,
     height,
     style: scene.style || '',
     reference: scene.personnage || (scene.logo_requis ? 'logo' : ''),
+    provider: provider.provider || '',
+    model: provider.modele || '',
   };
 }
 

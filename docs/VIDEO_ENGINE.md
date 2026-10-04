@@ -38,27 +38,44 @@ Statut de chaque brique, honnêtement :
 | Stockage durable (upload MP4/assets) | **IMPLEMENTED, BLOCKED PAR L'INFRASTRUCTURE DE CE BAC À SABLE** | Supabase non configuré ici ; voir `src/core/mediaStorage.js` (existant, réutilisé) |
 | Génération de script par IA (`contenu.fullVideo`) | **EXISTANT, NON RE-TESTÉ ICI** | Nécessite un fournisseur IA réseau + clé API (déjà le cas avant cette mission) |
 
-### Hugging Face Inference Providers (mise à jour 2026-10-04)
+### Hugging Face Inference Providers — modèle à usage commercial (2026-10-04)
 
-Le provider image-to-image `huggingface` utilise le SDK officiel
-`@huggingface/inference` et le routeur Inference Providers. Le modèle
-`black-forest-labs/FLUX.1-Kontext-dev` est actuellement publié par le Hub avec
-le provider `fal-ai` pour la tâche image-to-image; il n'est pas listé par le
-provider `hf-inference`. Configurer `IMAGE_IMG2IMG_PROVIDER=huggingface` et un
-`HF_TOKEN` dont le scope inclut **Inference Providers** et l'accès accepté au
-modèle FLUX. Si `HF_ENDPOINT` est renseigné, il reste réservé à un endpoint HF
-dédié; le fonctionnement standard ne contacte plus l'ancien domaine
-`api-inference.huggingface.co`.
+Le provider `huggingface` utilise le SDK officiel `@huggingface/inference` et
+le routeur Inference Providers. Après comparaison des modèles d'édition
+référencée réellement mappés `live` sur Fal, le modèle retenu est
+`Qwen/Qwen-Image-Edit-2511` (`fal-ai/qwen-image-edit-plus`). La fiche officielle
+déclare **Apache-2.0** et l'API accepte une ou plusieurs images de référence.
+La licence Apache 2.0 autorise l'usage commercial du modèle sous ses
+conditions (notamment notices/attribution lors d'une redistribution); elle
+n'accorde pas les droits sur les entrées, les personnes représentées ou les
+marques. Qwen indique une meilleure cohérence d'identité et une réduction du
+drift par rapport à 2509.
 
-Test de production réalisé le 4 octobre 2026 : le job isolé
-`b15bcdae-910c-4161-9676-a3962df2e057` a abouti et produit un MP4 vérifié par
-ffprobe (720×1280, H.264/AAC, 30 fps, 4,8 s), avec narration « Rémy Neural » et
-stockage Supabase récupérable. Ce premier test a également mis en évidence le
-défaut de l'ancien endpoint : les tentatives Hugging Face ont échoué puis le
-pipeline a utilisé `existing_asset` comme prévu. Après migration au SDK, il
-faut un nouveau job ciblé pour attester en production que le routeur Fal accepte
-le token et renvoie effectivement une image. Le repli sur l'asset officiel
-reste intentionnel et ne constitue jamais une preuve de génération IA.
+Comparatif vérifié dans le mapping public HF/Fal le 4 octobre 2026 :
+`Qwen/Qwen-Image-Edit` est `live` avec Apache-2.0 et la route
+`fal-ai/qwen-image-edit`; `Qwen/Qwen-Image-Edit-2509` est `live`, Apache-2.0,
+route `fal-ai/qwen-image-edit-2509`, édition multi-image; la version la plus
+récente `Qwen/Qwen-Image-Edit-2511` est `live`, Apache-2.0, route
+`fal-ai/qwen-image-edit-plus` et annonce les meilleures améliorations de
+cohérence parmi les candidates Qwen inspectées. `FLUX.1-Kontext-dev` est
+écarté pour la production commerciale en raison de sa licence non-commerciale;
+`FLUX.1-Kontext-pro` n'était pas mappé `live` pour image-to-image dans le
+catalogue consulté. `fal-ai` expose les tailles `portrait_16_9`/`landscape_16_9`;
+le moteur transmet `portrait_16_9` pour le rendu social vertical 9:16.
+
+Configurer `IMAGE_IMG2IMG_PROVIDER=huggingface`,
+`IMAGE_IMG2IMG_MODEL=Qwen/Qwen-Image-Edit-2511` et un `HF_TOKEN` dont le scope
+inclut **Inference Providers** et l'accès au modèle. Le routage par défaut
+utilise le routeur officiel Hugging Face; `HF_ENDPOINT` reste réservé à un
+endpoint HF dédié. Le cache inclut provider et modèle pour éviter de servir un
+asset mis en cache par une ancienne version du modèle. `existing_asset` reste
+le fallback intentionnel du pipeline; les métadonnées et tentatives doivent
+être inspectées par scène pour distinguer un fallback d'une génération réelle.
+
+Sources : [model card Qwen 2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511),
+[licence Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0),
+[mapping public HF/Fal](https://huggingface.co/api/partners/fal-ai/models),
+[schéma Fal](https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/qwen-image-edit-plus).
 
 ## Ce qui a réellement été vérifié dans ce dépôt
 

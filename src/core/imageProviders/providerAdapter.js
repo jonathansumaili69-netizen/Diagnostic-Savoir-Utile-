@@ -81,7 +81,7 @@ const PROVIDERS = Object.freeze({
     apiKeyEnv: 'HF_TOKEN',
     endpointEnv: 'HF_ENDPOINT',
     defaultEndpoint: 'https://router.huggingface.co',
-    defaultModel: 'black-forest-labs/FLUX.1-Kontext-dev',
+    defaultModel: 'Qwen/Qwen-Image-Edit-2511',
     capabilities: { image_to_image: true, reference_image: true, multi_reference: false, seed: true },
   },
   generic: {
@@ -319,12 +319,15 @@ async function generate({
       let binaryResponse = false;
       if (p.id === 'huggingface' && !env('HF_ENDPOINT')) {
         const referenceMime = referenceBuffers[0].subarray(0, 3).toString('hex') === 'ffd8ff' ? 'image/jpeg' : 'image/png';
+        const imageSize = Number(height) > Number(width)
+          ? 'portrait_16_9'
+          : (Number(width) > Number(height) ? 'landscape_16_9' : 'square_hd');
         sdkImage = await imageToImage({
           model: selectedModel,
           provider: 'fal-ai',
           accessToken: env('HF_TOKEN'),
           inputs: new Blob([referenceBuffers[0]], { type: referenceMime }),
-          parameters: { prompt },
+          parameters: { prompt, image_size: imageSize },
         }, { signal: t.signal, retry_on_error: false });
       } else {
         const req = buildRequest({ p, model: selectedModel, prompt, referenceBuffers, width, height, seed });

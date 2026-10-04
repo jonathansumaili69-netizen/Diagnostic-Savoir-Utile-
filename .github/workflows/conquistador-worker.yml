@@ -42,7 +42,7 @@ jobs:
     # Les secrets sont limites aux commandes qui en ont besoin.
     env:
       IMAGE_IMG2IMG_PROVIDER: huggingface
-      IMAGE_IMG2IMG_MODEL: black-forest-labs/FLUX.1-Kontext-dev
+      IMAGE_IMG2IMG_MODEL: Qwen/Qwen-Image-Edit-2511
       VOICE_PROVIDER: edge-tts
       VOICE_NAME: Rémy Neural
       VOICE_STUDIO_TIMEOUT_MS: "20000"
@@ -89,7 +89,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           IMAGE_IMG2IMG_PROVIDER: huggingface
-          IMAGE_IMG2IMG_MODEL: black-forest-labs/FLUX.1-Kontext-dev
+          IMAGE_IMG2IMG_MODEL: Qwen/Qwen-Image-Edit-2511
         run: |
           node -e "const s=require('./src/core/imageProviders/providerAdapter').status(); console.log(JSON.stringify({configured:s.configure,provider:s.provider,token_present:s.cle_detectee,model:s.modele}));"
 

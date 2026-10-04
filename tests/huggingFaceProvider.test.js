@@ -62,7 +62,7 @@ test.after(() => {
 test('providerAdapter: Hugging Face est declare sans remplacer stability/fal/replicate/generic', () => {
   assert.ok(providerAdapter.PROVIDERS.huggingface, 'le provider huggingface doit exister');
   assert.equal(providerAdapter.PROVIDERS.huggingface.apiKeyEnv, 'HF_TOKEN');
-  assert.equal(providerAdapter.PROVIDERS.huggingface.defaultModel, 'black-forest-labs/FLUX.1-Kontext-dev');
+  assert.equal(providerAdapter.PROVIDERS.huggingface.defaultModel, 'Qwen/Qwen-Image-Edit-2511');
   assert.equal(providerAdapter.PROVIDERS.huggingface.capabilities.image_to_image, true);
   assert.equal(providerAdapter.PROVIDERS.huggingface.capabilities.reference_image, true);
   for (const kept of ['stability', 'fal', 'replicate', 'generic']) {
@@ -128,14 +128,14 @@ test('providerAdapter.generate: route le modele via Hugging Face vers fal-ai ave
     calls.push({ url: parsed, opts });
     if (parsed.hostname === 'huggingface.co' && parsed.pathname.includes('/api/models/')) {
       return new Response(JSON.stringify({ inferenceProviderMapping: {
-        'fal-ai': { providerId: 'fal-ai/flux-kontext/dev', status: 'live', task: 'image-to-image' },
+        'fal-ai': { providerId: 'fal-ai/qwen-image-edit-plus', status: 'live', task: 'image-to-image' },
       } }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (parsed.hostname === 'router.huggingface.co' && opts.method === 'POST') {
       return new Response(JSON.stringify({
         request_id: 'hf-test-request',
         status: 'COMPLETED',
-        response_url: 'https://queue.fal.run/flux-kontext/dev/requests/hf-test-request',
+        response_url: 'https://queue.fal.run/qwen-image-edit-plus/requests/hf-test-request',
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (parsed.hostname === 'router.huggingface.co' && parsed.pathname.endsWith('/requests/hf-test-request')) {
@@ -150,21 +150,23 @@ test('providerAdapter.generate: route le modele via Hugging Face vers fal-ai ave
   };
   try {
     const refBuf = await sharp({ create: { width: 32, height: 32, channels: 3, background: '#123456' } }).jpeg().toBuffer();
-    const out = await providerAdapter.generate({ prompt: 'PERSONNAGE OFFICIEL Samuel', referenceBuffers: [refBuf], width: 96, height: 96, retries: 0 });
+    const out = await providerAdapter.generate({ prompt: 'PERSONNAGE OFFICIEL Samuel', referenceBuffers: [refBuf], width: 720, height: 1280, retries: 0 });
     const providerCall = calls.find((call) => call.url.hostname === 'router.huggingface.co' && call.opts.method === 'POST');
     assert.ok(providerCall, 'le SDK doit appeler le routeur officiel Hugging Face');
-    assert.match(providerCall.url.pathname, /\/fal-ai\/flux-kontext\/dev$/);
+    assert.match(providerCall.url.pathname, /\/fal-ai\/qwen-image-edit-plus$/);
     assert.equal(providerCall.url.searchParams.get('_subdomain'), 'queue');
     assert.equal(providerCall.opts.headers.Authorization, `Bearer ${TOKEN}`);
     const payload = JSON.parse(providerCall.opts.body);
     assert.equal(payload.prompt, 'PERSONNAGE OFFICIEL Samuel');
+    assert.equal(payload.image_size, 'portrait_16_9');
     assert.match(payload.image_url, /^data:image\/jpeg;base64,/);
-    assert.match(String(calls.find((call) => call.url.hostname === 'huggingface.co').url), /api\/models\/black-forest-labs\/FLUX\.1-Kontext-dev/);
+    assert.match(String(calls.find((call) => call.url.hostname === 'huggingface.co').url), /api\/models\/Qwen\/Qwen-Image-Edit-2511/);
     assert.equal(out.provider, 'huggingface');
     assert.equal(out.asset_type, 'AI_IMAGE_REFERENCED');
     assert.equal(out.response_format, 'binary');
     assert.equal(out.reference_count, 1);
     assert.ok(Buffer.isBuffer(out.buffer) && out.buffer.length > 0);
+    assert.notDeepEqual(out.buffer, refBuf, 'la réponse générée est un nouveau binaire, pas l’image de référence');
   } finally {
     global.fetch = realFetch;
     clearEnv();
