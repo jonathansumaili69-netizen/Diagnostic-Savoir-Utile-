@@ -7,7 +7,7 @@ const { logger } = require('../logger');
 const characterRegistry = require('../characterRegistry');
 
 const PROVIDER = 'fal-ai';
-const DEFAULT_MODEL = 'black-forest-labs/FLUX.1-schnell';
+const DEFAULT_MODEL = 'Qwen/Qwen-Image';
 let testTextToImage = null;
 
 function setTextToImageForTest(fn) {
@@ -72,8 +72,9 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = 12
       parameters: {
         width: w,
         height: h,
-        num_inference_steps: 4,
-        guidance_scale: 0,
+        num_inference_steps: 30,
+        guidance_scale: 2.5,
+        negative_prompt: 'blurry, low detail, unreadable text, watermark, logo',
         seed,
       },
     }, { signal: controller.signal, retry_on_error: false });

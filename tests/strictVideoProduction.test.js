@@ -78,7 +78,7 @@ async function withFakeFfprobe(fixture, callback) {
 }
 
 test('HF text-to-image: configuration par défaut et prompt de scène spécifique', () => {
-  assert.equal(imageProvider.DEFAULT_MODEL, 'black-forest-labs/FLUX.1-schnell');
+  assert.equal(imageProvider.DEFAULT_MODEL, 'Qwen/Qwen-Image');
   assert.equal(imageProvider.PROVIDER, 'fal-ai');
   const prompt = imageProvider.buildPrompt({ id: 's1', prompt_final: 'Un entretien dans une pièce claire', personnage: 'Samuel' });
   assert.match(prompt, /entretien dans une pièce claire/i);
@@ -105,7 +105,7 @@ test('HF text-to-image: appel provider réel simulé, image PNG originale et has
     return new Blob([png], { type: 'image/png' });
   });
   process.env.HF_TOKEN = 'test-token-not-a-real-secret';
-  process.env.HF_TEXT_TO_IMAGE_MODEL = 'black-forest-labs/FLUX.1-schnell';
+  process.env.HF_TEXT_TO_IMAGE_MODEL = 'Qwen/Qwen-Image';
   try {
     const asset = await imageProvider.generate({
       scene: { id: 'scene-7', prompt_final: 'Un bureau lumineux et un carnet bleu' },
@@ -113,9 +113,12 @@ test('HF text-to-image: appel provider réel simulé, image PNG originale et has
       height: 1280,
     });
     assert.equal(capturedArgs.provider, 'fal-ai');
-    assert.equal(capturedArgs.model, 'black-forest-labs/FLUX.1-schnell');
+    assert.equal(capturedArgs.model, 'Qwen/Qwen-Image');
     assert.equal(capturedArgs.parameters.width, 720);
     assert.equal(capturedArgs.parameters.height, 1280);
+    assert.equal(capturedArgs.parameters.num_inference_steps, 30);
+    assert.equal(capturedArgs.parameters.guidance_scale, 2.5);
+    assert.equal(capturedArgs.parameters.negative_prompt, 'blurry, low detail, unreadable text, watermark, logo');
     assert.equal(asset.asset_type, 'AI_IMAGE_GENERATED');
     assert.equal(asset.width, 720);
     assert.equal(asset.height, 1280);

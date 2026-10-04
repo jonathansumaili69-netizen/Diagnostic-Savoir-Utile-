@@ -41,7 +41,7 @@ jobs:
     # Seule la configuration non sensible est commune a toutes les etapes.
     # Les secrets sont limites aux commandes qui en ont besoin.
     env:
-      HF_TEXT_TO_IMAGE_MODEL: black-forest-labs/FLUX.1-schnell
+      HF_TEXT_TO_IMAGE_MODEL: Qwen/Qwen-Image
       IMAGE_IMG2IMG_PROVIDER: huggingface
       IMAGE_IMG2IMG_MODEL: Qwen/Qwen-Image-Edit-2511
       VOICE_PROVIDER: edge-tts
@@ -108,7 +108,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_TEXT_TO_IMAGE_MODEL: black-forest-labs/FLUX.1-schnell
+          HF_TEXT_TO_IMAGE_MODEL: Qwen/Qwen-Image
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
