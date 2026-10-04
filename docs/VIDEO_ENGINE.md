@@ -38,6 +38,28 @@ Statut de chaque brique, honnêtement :
 | Stockage durable (upload MP4/assets) | **IMPLEMENTED, BLOCKED PAR L'INFRASTRUCTURE DE CE BAC À SABLE** | Supabase non configuré ici ; voir `src/core/mediaStorage.js` (existant, réutilisé) |
 | Génération de script par IA (`contenu.fullVideo`) | **EXISTANT, NON RE-TESTÉ ICI** | Nécessite un fournisseur IA réseau + clé API (déjà le cas avant cette mission) |
 
+### Hugging Face Inference Providers (mise à jour 2026-10-04)
+
+Le provider image-to-image `huggingface` utilise le SDK officiel
+`@huggingface/inference` et le routeur Inference Providers. Le modèle
+`black-forest-labs/FLUX.1-Kontext-dev` est actuellement publié par le Hub avec
+le provider `fal-ai` pour la tâche image-to-image; il n'est pas listé par le
+provider `hf-inference`. Configurer `IMAGE_IMG2IMG_PROVIDER=huggingface` et un
+`HF_TOKEN` dont le scope inclut **Inference Providers** et l'accès accepté au
+modèle FLUX. Si `HF_ENDPOINT` est renseigné, il reste réservé à un endpoint HF
+dédié; le fonctionnement standard ne contacte plus l'ancien domaine
+`api-inference.huggingface.co`.
+
+Test de production réalisé le 4 octobre 2026 : le job isolé
+`b15bcdae-910c-4161-9676-a3962df2e057` a abouti et produit un MP4 vérifié par
+ffprobe (720×1280, H.264/AAC, 30 fps, 4,8 s), avec narration « Rémy Neural » et
+stockage Supabase récupérable. Ce premier test a également mis en évidence le
+défaut de l'ancien endpoint : les tentatives Hugging Face ont échoué puis le
+pipeline a utilisé `existing_asset` comme prévu. Après migration au SDK, il
+faut un nouveau job ciblé pour attester en production que le routeur Fal accepte
+le token et renvoie effectivement une image. Le repli sur l'asset officiel
+reste intentionnel et ne constitue jamais une preuve de génération IA.
+
 ## Ce qui a réellement été vérifié dans ce dépôt
 
 Une exécution complète du pipeline (`videoOrchestrator.createVideo()`) avec un

@@ -17,6 +17,7 @@
     "diagnostics": "node scripts/diagnostics-video-engine.js"
   },
   "dependencies": {
+    "@huggingface/inference": "4.13.30",
     "@netlify/functions": "^2.8.2",
     "@supabase/supabase-js": "^2.45.4",
     "sharp": "^0.35.4"

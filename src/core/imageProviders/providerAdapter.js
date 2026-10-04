@@ -1,6 +1,7 @@
 'use strict';
 
 const { logger } = require('../logger');
+const { imageToImage } = require('@huggingface/inference');
 
 /**
  * ADAPTATEUR IMAGE-TO-IMAGE PROVIDER-AGNOSTIQUE (prompt maitre, sections 5 et 22).
@@ -18,8 +19,8 @@ const { logger } = require('../logger');
  *   - en cas d'echec : exception explicite, jamais un buffer fabrique.
  *
  * Fournisseurs supportes (tous OPTIONNELS, aucun n'est requis par Conquistador) :
- *   - huggingface (Inference API image-to-image : corps = image binaire,
- *                  prompt en parametre de requete, reponse = image binaire)
+ *   - huggingface (Inference Providers image-to-image via le SDK officiel ;
+ *                  FLUX Kontext est route vers le provider fal-ai)
  *   - stability   (Stable Image / structure, multipart image+prompt)
  *   - fal         (flux Kontext / flux.2 image-to-image, image_url)
  *   - replicate   (modele img2img via predictions, data URI)
@@ -75,11 +76,11 @@ const PROVIDERS = Object.freeze({
   },
   huggingface: {
     id: 'huggingface',
-    label: 'Hugging Face (Inference API image-to-image / reference)',
+    label: 'Hugging Face Inference Providers (fal-ai / image-to-image)',
     requiresApiKey: true,
     apiKeyEnv: 'HF_TOKEN',
     endpointEnv: 'HF_ENDPOINT',
-    defaultEndpoint: (model) => `https://api-inference.huggingface.co/models/${model || 'black-forest-labs/FLUX.1-Kontext-dev'}`,
+    defaultEndpoint: 'https://router.huggingface.co',
     defaultModel: 'black-forest-labs/FLUX.1-Kontext-dev',
     capabilities: { image_to_image: true, reference_image: true, multi_reference: false, seed: true },
   },
@@ -243,10 +244,8 @@ function buildRequest({ p, model, prompt, referenceBuffers, width, height, seed 
   }
 
   if (p.id === 'huggingface') {
-    // Hugging Face Inference API (tache image-to-image) : le corps de la
-    // requete est l'IMAGE BINAIRE de reference ; le prompt voyage en
-    // parametre de requete. La reponse est l'image generee en octets bruts
-    // (voir le traitement binaryResponse dans generate()).
+    // Compatibilite avec un endpoint HF explicitement configure. Sans
+    // surcharge, generate() emploie le SDK et le routeur Inference Providers.
     const url = new URL(endpoint);
     url.searchParams.set('prompt', prompt);
     if (Number.isFinite(seed)) url.searchParams.set('seed', String(seed));
@@ -314,8 +313,34 @@ async function generate({
     const startedAt = Date.now();
     const t = withTimeout(timeoutMs);
     try {
-      const req = buildRequest({ p, model: model || env('IMAGE_IMG2IMG_MODEL') || p.defaultModel, prompt, referenceBuffers, width, height, seed });
-      const res = await fetch(req.endpoint, { method: req.method, headers: req.headers, body: req.body, signal: t.signal });
+      const selectedModel = model || env('IMAGE_IMG2IMG_MODEL') || p.defaultModel;
+      let res;
+      let sdkImage = null;
+      let binaryResponse = false;
+      if (p.id === 'huggingface' && !env('HF_ENDPOINT')) {
+        const referenceMime = referenceBuffers[0].subarray(0, 3).toString('hex') === 'ffd8ff' ? 'image/jpeg' : 'image/png';
+        sdkImage = await imageToImage({
+          model: selectedModel,
+          provider: 'fal-ai',
+          accessToken: env('HF_TOKEN'),
+          inputs: new Blob([referenceBuffers[0]], { type: referenceMime }),
+          parameters: { prompt },
+        }, { signal: t.signal, retry_on_error: false });
+      } else {
+        const req = buildRequest({ p, model: selectedModel, prompt, referenceBuffers, width, height, seed });
+        binaryResponse = req.binaryResponse === true;
+        res = await fetch(req.endpoint, { method: req.method, headers: req.headers, body: req.body, signal: t.signal });
+      }
+      if (sdkImage) {
+        binaryResponse = true;
+        const bytes = Buffer.from(await sdkImage.arrayBuffer());
+        if (!bytes.length) throw new Error('reponse image vide du routeur Hugging Face / fal-ai');
+        res = {
+          ok: true,
+          headers: { get: () => sdkImage.type || 'image/png' },
+          arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+        };
+      }
       const contentTypeHeader = res.headers.get('content-type') || '';
       if (!res.ok) {
         const errText = await res.text();
@@ -323,9 +348,9 @@ async function generate({
       }
       let image;
       let responseFormat = 'json';
-      if (req.binaryResponse === true || contentTypeHeader.startsWith('image/')) {
-        // Providers qui renvoient directement les OCTETS de l'image (Hugging
-        // Face Inference API) : aucune enveloppe JSON a decoder.
+      if (binaryResponse || contentTypeHeader.startsWith('image/')) {
+        // Les providers qui renvoient directement les OCTETS de l'image :
+        // aucune enveloppe JSON a decoder.
         const bytes = Buffer.from(await res.arrayBuffer());
         if (!bytes.length) throw new Error('reponse binaire vide du provider (aucune image recue)');
         image = { buffer: bytes, contentType: contentTypeHeader.startsWith('image/') ? contentTypeHeader : 'image/png' };

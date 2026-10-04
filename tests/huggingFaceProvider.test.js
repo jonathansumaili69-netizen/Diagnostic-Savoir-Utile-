@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Tests du provider Hugging Face (Inference API image-to-image) ajoute a
+ * Tests du provider Hugging Face Inference Providers (routeur Fal-ai) ajoute a
  * l'architecture EXISTANTE, sans remplacer stability / fal / replicate /
  * generic. Ces tests prouvent que :
  *   - le provider HF est DECLARE et reste additif (aucun provider supprime) ;
@@ -118,23 +118,48 @@ test('imageProviders: sans Hugging Face configure, la chaine reste STRICTEMENT i
   assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['existing_asset', 'graphic_engine']);
 });
 
-test('providerAdapter.generate: requete Hugging Face reelle (Bearer HF_TOKEN) et reponse binaire -> asset exploitable', async () => {
+test('providerAdapter.generate: route le modele via Hugging Face vers fal-ai avec reference et recupere l image', async () => {
   process.env.IMAGE_IMG2IMG_PROVIDER = 'huggingface';
   process.env.HF_TOKEN = TOKEN;
   const png = await makePng();
   const calls = [];
-  global.fetch = async (url, opts) => {
-    calls.push({ url: String(url), opts });
-    return fakeResponse({ ok: true, status: 200, contentType: 'image/png', body: png });
+  global.fetch = async (url, opts = {}) => {
+    const parsed = new URL(String(url));
+    calls.push({ url: parsed, opts });
+    if (parsed.hostname === 'huggingface.co' && parsed.pathname.includes('/api/models/')) {
+      return new Response(JSON.stringify({ inferenceProviderMapping: {
+        'fal-ai': { providerId: 'fal-ai/flux-kontext/dev', status: 'live', task: 'image-to-image' },
+      } }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    if (parsed.hostname === 'router.huggingface.co' && opts.method === 'POST') {
+      return new Response(JSON.stringify({
+        request_id: 'hf-test-request',
+        status: 'COMPLETED',
+        response_url: 'https://queue.fal.run/flux-kontext/dev/requests/hf-test-request',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    if (parsed.hostname === 'router.huggingface.co' && parsed.pathname.endsWith('/requests/hf-test-request')) {
+      return new Response(JSON.stringify({ images: [{ url: 'https://generated.example.test/result.png' }] }), {
+        status: 200, headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (parsed.hostname === 'generated.example.test') {
+      return new Response(png, { status: 200, headers: { 'content-type': 'image/png' } });
+    }
+    return new Response('Unexpected mocked URL', { status: 500 });
   };
   try {
     const refBuf = await sharp({ create: { width: 32, height: 32, channels: 3, background: '#123456' } }).jpeg().toBuffer();
     const out = await providerAdapter.generate({ prompt: 'PERSONNAGE OFFICIEL Samuel', referenceBuffers: [refBuf], width: 96, height: 96, retries: 0 });
-    assert.equal(calls.length, 1, 'un seul appel reseau doit etre effectue');
-    assert.match(calls[0].url, /api-inference\.huggingface\.co\/models\//);
-    assert.equal(new URL(calls[0].url).searchParams.get('prompt'), 'PERSONNAGE OFFICIEL Samuel');
-    assert.equal(calls[0].opts.headers.Authorization, `Bearer ${TOKEN}`);
-    assert.ok(Buffer.isBuffer(calls[0].opts.body), "le corps de la requete doit etre l'image binaire de reference");
+    const providerCall = calls.find((call) => call.url.hostname === 'router.huggingface.co' && call.opts.method === 'POST');
+    assert.ok(providerCall, 'le SDK doit appeler le routeur officiel Hugging Face');
+    assert.match(providerCall.url.pathname, /\/fal-ai\/flux-kontext\/dev$/);
+    assert.equal(providerCall.url.searchParams.get('_subdomain'), 'queue');
+    assert.equal(providerCall.opts.headers.Authorization, `Bearer ${TOKEN}`);
+    const payload = JSON.parse(providerCall.opts.body);
+    assert.equal(payload.prompt, 'PERSONNAGE OFFICIEL Samuel');
+    assert.match(payload.image_url, /^data:image\/jpeg;base64,/);
+    assert.match(String(calls.find((call) => call.url.hostname === 'huggingface.co').url), /api\/models\/black-forest-labs\/FLUX\.1-Kontext-dev/);
     assert.equal(out.provider, 'huggingface');
     assert.equal(out.asset_type, 'AI_IMAGE_REFERENCED');
     assert.equal(out.response_format, 'binary');
@@ -151,12 +176,13 @@ test('imageProviders.generateAsset: Hugging Face tente en premier puis repli REE
   process.env.HF_TOKEN = TOKEN;
   process.env.CHARACTER_REFERENCE_MAX_ATTEMPTS = '1';
   let hfCalls = 0;
-  global.fetch = async (url) => {
-    if (/api-inference\.huggingface\.co/.test(String(url))) {
+  global.fetch = async (url, opts = {}) => {
+    const parsed = new URL(String(url));
+    if (parsed.hostname === 'router.huggingface.co' && opts.method === 'POST') {
       hfCalls += 1;
-      return fakeResponse({ ok: false, status: 503, contentType: 'application/json', text: '{"error":"Model is currently loading"}' });
+      return new Response(JSON.stringify({ error: 'Provider temporarily unavailable' }), { status: 503, headers: { 'content-type': 'application/json' } });
     }
-    return fakeResponse({ ok: false, status: 500, contentType: 'text/plain', text: 'boom' });
+    return new Response('Unexpected mocked URL', { status: 500 });
   };
   try {
     const asset = await imageProviders.generateAsset({ scene: { personnage: 'Samuel' }, width: 120, height: 200 });
