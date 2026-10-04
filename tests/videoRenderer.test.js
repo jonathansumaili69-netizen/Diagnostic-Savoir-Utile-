@@ -37,6 +37,9 @@ test('videoRenderer.renderManifest: produit un vrai MP4 valide (video muette + s
   });
   assert.equal(result.outputPath, outputPath);
   assert.equal(result.audioSource, 'silence');
+  assert.equal(result.motionEffect, 'ken_burns_slow_zoom');
+  assert.equal(result.sceneTransition, 'clean_cut_with_motion');
+  assert.equal(result.sceneCount, 2);
   assert.ok(fs.existsSync(outputPath));
   const check = await qc.check(outputPath, { expected: { width: 320, height: 568, minDurationSeconds: 2 } });
   assert.equal(check.ok, true, JSON.stringify(check.checks.filter((c) => c.status !== 'pass')));
@@ -90,6 +93,19 @@ test('videoRenderer.renderManifest: refuse une scene sans image (n invente jamai
     }),
     /n'a pas d'asset image/
   );
+});
+
+test('videoRenderer.detectAbnormalSilence: détecte une plage continue de silence dans un fichier audio', async () => {
+  const { spawnSync } = require('node:child_process');
+  const silencePath = path.join(tmpDir, 'silence.wav');
+  const generated = spawnSync('ffmpeg', [
+    '-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', '3', '-c:a', 'pcm_s16le', '-loglevel', 'error', silencePath,
+  ]);
+  assert.equal(generated.status, 0, 'la fixture audio silencieuse doit être générée par FFmpeg');
+  const result = await videoRenderer.detectAbnormalSilence(silencePath, { minSilenceSeconds: 1, noiseDb: -42 });
+  assert.equal(result.ok, false);
+  assert.ok(result.abnormal_silence_count >= 1);
+  assert.ok(result.silences[0].duration_seconds >= 1);
 });
 
 test.after(() => {

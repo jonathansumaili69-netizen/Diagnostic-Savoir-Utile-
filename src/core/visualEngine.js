@@ -2,6 +2,7 @@
 
 const path = require('path');
 const fs = require('fs/promises');
+const crypto = require('crypto');
 
 const visualContinuity = require('./visualContinuity');
 const characterRegistry = require('./characterRegistry');
@@ -122,19 +123,28 @@ async function evaluateCharacterConsistency({ scene, asset, characterId }) {
  * sert uniquement a la verification de continuite de style (voir
  * visualContinuity.evaluateScene).
  */
-async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes = [], workDir = null, useCache = true, index = 0 } = {}) {
+async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes = [], workDir = null, useCache = true, index = 0, requireAiGeneration = false, seenHashes = null } = {}) {
   const continuite = visualContinuity.evaluateScene(scene, priorScenes);
   const characterId = characterRegistry.resolveCharacterId(scene.personnage || scene.character_id || '');
   const character = characterId ? characterRegistry.getCharacter(characterId) : null;
   const cacheParams = cacheParamsFor(scene, width, height);
 
-  let asset = useCache ? await tryHydrateFromCache(cacheParams) : null;
+  let asset = requireAiGeneration ? null : (useCache ? await tryHydrateFromCache(cacheParams) : null);
   const fromCache = Boolean(asset);
   let providerAttempts = [];
   if (!asset) {
-    asset = await imageProviders.generateAsset({ scene, width, height, mode });
+    asset = await imageProviders.generateAsset({ scene, width, height, mode, requireAiGeneration });
     providerAttempts = asset.provider_attempts || [];
   }
+
+  const contentSha256 = asset.content_sha256 || crypto.createHash('sha256').update(asset.buffer).digest('hex');
+  if (requireAiGeneration && asset.asset_type !== 'AI_IMAGE_GENERATED') {
+    throw new Error(`La scène ${scene.id || index + 1} n’a pas été produite par le générateur IA Hugging Face (${asset.asset_type || 'type inconnu'}).`);
+  }
+  if (requireAiGeneration && seenHashes && seenHashes.has(contentSha256)) {
+    throw new Error(`L’image de la scène ${scene.id || index + 1} est un doublon binaire d’une autre scène; le job strict est refusé.`);
+  }
+  if (requireAiGeneration && seenHashes) seenHashes.add(contentSha256);
 
   let localPath = null;
   if (workDir) {
@@ -151,6 +161,9 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
       buffer: asset.buffer,
       contentType: asset.contentType || 'image/png',
     });
+    if (requireAiGeneration && !storage.url) {
+      throw new Error(`La nouvelle image de la scène ${scene.id || index + 1} n’a pas été stockée dans Supabase Storage : ${storage.raison || 'URL durable absente'}.`);
+    }
     if (useCache && storage.url) {
       await assetCache.set(cacheParams, {
         url: storage.url,
@@ -166,11 +179,23 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
 
   const consistency = await evaluateCharacterConsistency({ scene, asset, characterId });
 
+  if (!requireAiGeneration) {
+    if (fromCache || asset.asset_type === 'EXISTING_ASSET') {
+      logger.info('EXISTING_ASSET', { scene_id: scene.id || scene.numero || null, asset_type: asset.asset_type || 'CACHE' });
+    } else if (asset.asset_type === 'AI_IMAGE' || asset.asset_type === 'AI_IMAGE_REFERENCED' || asset.asset_type === 'AI_IMAGE_GENERATED') {
+      logger.info('AI_IMAGE_GENERATED', { scene_id: scene.id || scene.numero || null, provider: asset.provider || null, model: asset.model || null, asset_type: asset.asset_type, sha256: contentSha256 });
+    } else {
+      logger.warn('FALLBACK', { scene_id: scene.id || scene.numero || null, provider: asset.provider || null, asset_type: asset.asset_type || null });
+    }
+  }
+
   return {
     scene_id: scene.id || scene.numero || null,
     asset_type: asset.asset_type || null,
     provider: asset.provider || null,
     model: asset.model || null,
+    content_sha256: contentSha256,
+    storage_url: storage.url || null,
     width: asset.width,
     height: asset.height,
     local_path: localPath,
@@ -207,11 +232,12 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
 async function resolveVideoAssets(scenes = [], options = {}) {
   const list = Array.isArray(scenes) ? scenes : [];
   const results = [];
+  const seenHashes = new Set();
   for (let i = 0; i < list.length; i += 1) {
     const scene = list[i] && typeof list[i] === 'object' ? list[i] : {};
     try {
       // eslint-disable-next-line no-await-in-loop
-      const resolved = await resolveSceneAsset(scene, { ...options, priorScenes: list.slice(0, i), index: i });
+      const resolved = await resolveSceneAsset(scene, { ...options, seenHashes, priorScenes: list.slice(0, i), index: i });
       results.push({ ok: true, ...resolved });
     } catch (err) {
       logger.error('visualEngine: echec de resolution d asset pour une scene', { scene_id: scene.id || null, error: err.message });

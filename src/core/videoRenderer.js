@@ -60,10 +60,12 @@ function runFfmpeg(args, { timeoutMs = 120000, label = 'ffmpeg' } = {}) {
 /** Segment video muet a partir d'une image fixe, duree et dimensions exactes. */
 async function renderStillClip({ imagePath, durationSeconds, width, height, outputPath, fps = DEFAULT_FPS }) {
   const duration = Math.max(0.34, Number(durationSeconds) || 1);
+  const zoomStep = (0.08 / (duration * fps)).toFixed(8);
+  const motionFilter = `zoompan=z='min(zoom+${zoomStep},1.08)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${width}x${height}:fps=${fps}`;
   await runFfmpeg([
     '-loop', '1', '-i', imagePath,
     '-t', duration.toFixed(3),
-    '-vf', `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=${fps},format=yuv420p`,
+    '-vf', `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=${fps},${motionFilter},format=yuv420p`,
     '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
     outputPath,
   ], { label: `renderStillClip(${path.basename(outputPath)})` });
@@ -111,6 +113,36 @@ async function burnSubtitles({ videoPath, srtPath, outputPath, fontSizePx, margi
     outputPath,
   ], { label: 'burnSubtitles' });
   return outputPath;
+}
+
+/** Mesure les plages de silence longues dans une piste vocale réelle. */
+async function detectAbnormalSilence(filePath, { minSilenceSeconds = 2.5, noiseDb = -42 } = {}) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-hide_banner', '-i', filePath,
+      '-af', `silencedetect=noise=${noiseDb}dB:d=${minSilenceSeconds}`,
+      '-f', 'null', '-',
+    ];
+    const proc = spawn('ffmpeg', args);
+    let stderr = '';
+    proc.stderr.on('data', (chunk) => { stderr += chunk; });
+    proc.on('error', (err) => reject(new Error(`detectAbnormalSilence: FFmpeg indisponible : ${err.message}`)));
+    proc.on('exit', (code) => {
+      if (code !== 0) {
+        reject(new Error(`detectAbnormalSilence: analyse FFmpeg échouée (code ${code}) : ${stderr.trim().slice(0, 320)}`));
+        return;
+      }
+      const durations = Array.from(stderr.matchAll(/silence_duration:\s*([\d.]+)/g), (match) => Number(match[1]));
+      const starts = Array.from(stderr.matchAll(/silence_start:\s*([\d.]+)/g), (match) => Number(match[1]));
+      resolve({
+        threshold_db: noiseDb,
+        minimum_silence_seconds: minSilenceSeconds,
+        abnormal_silence_count: durations.length,
+        silences: durations.map((duration_seconds, index) => ({ start_seconds: starts[index] ?? null, duration_seconds })),
+        ok: durations.length === 0,
+      });
+    });
+  });
 }
 
 /**
@@ -214,6 +246,8 @@ async function renderManifest({
     outputPath,
     durationSeconds: totalDurationSeconds,
     sceneCount: scenes.length,
+    motionEffect: 'ken_burns_slow_zoom',
+    sceneTransition: 'clean_cut_with_motion',
     audioSource: audioSourcesUsed.has('voice') && audioSourcesUsed.has('silence')
       ? 'mixed'
       : (audioSourcesUsed.has('voice') ? 'voice' : 'silence'),
@@ -221,4 +255,4 @@ async function renderManifest({
   };
 }
 
-module.exports = { isAvailable, renderStillClip, concatClips, normalizeAudioSegment, burnSubtitles, renderManifest };
+module.exports = { isAvailable, renderStillClip, concatClips, normalizeAudioSegment, burnSubtitles, detectAbnormalSilence, renderManifest };

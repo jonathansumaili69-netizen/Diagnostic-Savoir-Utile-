@@ -90,11 +90,21 @@ async function scenes(input) {
 }
 
 async function fullVideo(input) {
+  const strictProduction = input.production_profile === 'strict_multiscene';
+  const strictGuidance = strictProduction ? [
+    `PROFIL DE PRODUCTION STRICT : vise ${Number(input.target_duration_seconds) || 60} secondes, cible acceptable de 45 à 90 secondes après mesure de la voix réelle.`,
+    'Produis exactement 8 scènes numérotées, chacune avec un id distinct, un prompt_final inédit et une narration voix_off_scene originale de 17 à 24 mots.',
+    'Le script total doit rester dense, oral et utile (environ 145 à 175 mots) : hook dès la première phrase, développement de plusieurs conseils concrets, transitions courtes, conclusion et CTA explicite dans la dernière scène.',
+    "Format faceless : n'inclus pas Samuel, Marc, aucun personnage identifiable ni visage ; raconte avec des décors, objets et gestes non identifiants. Chaque visuel doit illustrer le texte précis de sa scène.",
+    'Garde une direction artistique cohérente pour les 8 scènes (palette bleu nuit, ivoire et touches ocre, lumière naturelle, réalisme éditorial), mais varie clairement le décor, le cadrage et les objets. Aucun texte lisible ni logo inventé dans les images.',
+    'Ne produis pas de manifeste générique, de prompt répété, de scène décorative ou de remplissage.',
+  ].join('\n') : '';
   const prompt = [
     `Brief video complet a produire de bout en bout : ${input.sujet || input.brief || "recherche d'emploi en Afrique francophone"}`,
     'Produis TOUS les elements suivants, coherents entre eux : idee, angle, hook, script,',
     'scenes (liste avec id/description/personnage/personnage_secondaire/decor/cadrage/emotion/style/reference_necessaire/logo_requis/prompt_final/voix_off_scene),',
     SCENE_DECOUPAGE_GUIDANCE,
+    strictGuidance,
     'voix_off_scene = texte exact, pret a etre lu tel quel par la voix off pour cette scene precise (pas une indication de ton).',
     'texte_ecran (liste de textes courts affiches a l\'ecran), voix_off (indication de ton, le',
     'fournisseur/voix technique est deja fixe et ne doit pas etre invente), cta, description,',

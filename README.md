@@ -63,8 +63,9 @@ Voir **`.env.example`** pour la liste exhaustive et documentée. En résumé pou
 |---|---|---|
 | `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Accès à la file persistante des jobs et au stockage durable (serveur uniquement) | requis pour le Worker de production |
 | `SUPABASE_MEDIA_BUCKET` | Bucket Storage média (défaut projet : `conquistador-media`) | non (fallback local honnête) |
-| `HF_TOKEN` | Provider image-to-image Hugging Face — **serveur uniquement, jamais exposé** | non (repli `existing_asset`) |
-| `IMAGE_IMG2IMG_MODEL` | Modèle img2img (défaut : `black-forest-labs/FLUX.1-Kontext-dev`) | non |
+| `HF_TOKEN` | Provider Hugging Face (image-to-image ou text-to-image strict) — **serveur uniquement, jamais exposé** | non (obligatoire pour `strict_multiscene`) |
+| `IMAGE_IMG2IMG_MODEL` | Modèle image-to-image avec référence (défaut : `Qwen/Qwen-Image-Edit-2511`, Apache-2.0) | non |
+| `HF_TEXT_TO_IMAGE_MODEL` | Modèle du profil vidéo commercial strict (défaut : `black-forest-labs/FLUX.1-schnell`, Apache-2.0) | non |
 | `VOICE_STUDIO_API_URL` | Service voix off externe | non (statut VOICE_UNAVAILABLE honnête) |
 | `CONQUISTADOR_DATA_DIR` | Répertoire du fallback JSON | non |
 

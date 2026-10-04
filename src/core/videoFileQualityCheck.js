@@ -95,16 +95,53 @@ async function check(filePath, { expected = {} } = {}) {
   const audioStream = streams.find((s) => s.codec_type === 'audio');
   const durationSeconds = Number(format.duration) || (videoStream ? Number(videoStream.duration) : NaN);
 
+  if (expected.requireMp4Container) {
+    const isMp4 = String(format.format_name || '').split(',').some((name) => ['mp4', 'mov'].includes(name));
+    push('conteneur_mp4', isMp4 ? 'pass' : 'fail', isMp4
+      ? `Conteneur MP4/MOV vérifié (${format.format_name}).`
+      : `Conteneur non MP4/MOV (${format.format_name || 'inconnu'}).`);
+  }
+
   push('duree_positive', Number.isFinite(durationSeconds) && durationSeconds > 0 ? 'pass' : 'fail',
     Number.isFinite(durationSeconds) && durationSeconds > 0 ? `Duree mesuree : ${durationSeconds.toFixed(2)}s.` : 'Duree nulle, negative ou non mesurable.');
 
   push('piste_video', videoStream ? 'pass' : 'fail', videoStream ? `Piste video presente (codec ${videoStream.codec_name || 'inconnu'}).` : 'Aucune piste video dans le fichier.');
   push('piste_audio', audioStream ? 'pass' : 'fail', audioStream ? `Piste audio presente (codec ${audioStream.codec_name || 'inconnu'}).` : 'Aucune piste audio dans le fichier.');
 
+  if (expected.minDurationSecondsStrict != null) {
+    const minimumOk = Number.isFinite(durationSeconds) && durationSeconds >= Number(expected.minDurationSecondsStrict);
+    push('duree_minimale_stricte', minimumOk ? 'pass' : 'fail', minimumOk
+      ? `Durée ffprobe ${durationSeconds.toFixed(2)} s ≥ ${expected.minDurationSecondsStrict} s.`
+      : `Durée ffprobe ${Number.isFinite(durationSeconds) ? durationSeconds.toFixed(2) : 'non mesurée'} s < ${expected.minDurationSecondsStrict} s.`);
+  }
+  if (expected.maxDurationSeconds != null) {
+    const maximumOk = Number.isFinite(durationSeconds) && durationSeconds <= Number(expected.maxDurationSeconds);
+    push('duree_maximale_stricte', maximumOk ? 'pass' : 'fail', maximumOk
+      ? `Durée ffprobe ${durationSeconds.toFixed(2)} s ≤ ${expected.maxDurationSeconds} s.`
+      : `Durée ffprobe ${Number.isFinite(durationSeconds) ? durationSeconds.toFixed(2) : 'non mesurée'} s > ${expected.maxDurationSeconds} s.`);
+  }
+
+  if (expected.requireH264) {
+    const h264 = Boolean(videoStream && String(videoStream.codec_name).toLowerCase() === 'h264');
+    push('codec_video_h264', h264 ? 'pass' : 'fail', h264 ? 'Codec vidéo H.264 vérifié.' : `Codec vidéo attendu H.264, mesuré ${videoStream && videoStream.codec_name || 'absent'}.`);
+  }
+  if (expected.requireAAC) {
+    const aac = Boolean(audioStream && String(audioStream.codec_name).toLowerCase() === 'aac');
+    push('codec_audio_aac', aac ? 'pass' : 'fail', aac ? 'Codec audio AAC vérifié.' : `Codec audio attendu AAC, mesuré ${audioStream && audioStream.codec_name || 'absent'}.`);
+  }
+
   if (videoStream) {
     const width = Number(videoStream.width) || 0;
     const height = Number(videoStream.height) || 0;
     push('resolution', width > 0 && height > 0 ? 'pass' : 'fail', width > 0 && height > 0 ? `Resolution : ${width}x${height}.` : 'Resolution non determinee.');
+    if (expected.minWidth != null || expected.minHeight != null) {
+      const minWidth = Number(expected.minWidth) || 0;
+      const minHeight = Number(expected.minHeight) || 0;
+      const enough = width >= minWidth && height >= minHeight;
+      push('resolution_minimale', enough ? 'pass' : 'fail', enough
+        ? `Résolution ${width}×${height} respecte le minimum ${minWidth}×${minHeight}.`
+        : `Résolution ${width}×${height} inférieure au minimum ${minWidth}×${minHeight}.`);
+    }
     if (expected.width && expected.height && width > 0 && height > 0) {
       const matches = width === expected.width && height === expected.height;
       push('resolution_attendue', matches ? 'pass' : 'warn', matches
@@ -120,6 +157,12 @@ async function check(filePath, { expected = {} } = {}) {
       ? Number(videoStream.avg_frame_rate.split('/')[0]) / Number(videoStream.avg_frame_rate.split('/')[1] || 1)
       : NaN;
     push('fps', Number.isFinite(fps) && fps > 0 ? 'pass' : 'warn', Number.isFinite(fps) && fps > 0 ? `${fps.toFixed(2)} images/seconde.` : 'FPS non determinable.');
+    if (expected.expectedFps != null) {
+      const fpsOk = Number.isFinite(fps) && Math.abs(fps - Number(expected.expectedFps)) < 0.1;
+      push('fps_attendu', fpsOk ? 'pass' : 'fail', fpsOk
+        ? `${fps.toFixed(2)} fps conforme à la cible ${expected.expectedFps}.`
+        : `Fréquence attendue ${expected.expectedFps} fps, mesurée ${Number.isFinite(fps) ? fps.toFixed(2) : 'inconnue'}.`);
+    }
   }
 
   if (expected.minDurationSeconds && Number.isFinite(durationSeconds)) {

@@ -78,6 +78,10 @@ function sanitizeId(value) {
   return String(value == null ? '' : value).replace(/[^a-zA-Z0-9_-]/g, '_') || 'x';
 }
 
+function isStrictMultiscene(job) {
+  return Boolean(job && job.input && job.input.production_profile === 'strict_multiscene');
+}
+
 /**
  * Resout l'identite officielle de chaque scene et REFUSE explicitement tout
  * personnage non officiel (aucun personnage generique n'est fabrique).
@@ -132,24 +136,60 @@ function resolveCharacters(scenes = []) {
 
 /** QUEUED -> PREPARING : idee/script/scenes/manifest. Reutilise src/agents/contenu.js (fullVideo) tel quel ; n'invente rien s'il echoue. */
 async function stepPrepare(job) {
+  const strict = isStrictMultiscene(job);
+  const validateManifest = (manifest) => {
+    const scenes = Array.isArray(manifest && manifest.scenes) ? manifest.scenes : [];
+    if (strict && (scenes.length < 6 || scenes.length > 12)) {
+      throw new Error(`Le profil strict exige de 6 à 12 scènes distinctes; manifeste reçu : ${scenes.length}.`);
+    }
+    if (strict) {
+      const ids = scenes.map((scene, i) => String(scene.id || scene.scene_id || `scene_${i + 1}`));
+      if (new Set(ids).size !== ids.length) throw new Error('Le manifeste strict contient des identifiants de scène dupliqués.');
+      const invalid = scenes.findIndex((scene) => !String(scene.prompt_final || scene.description || '').trim() || !String(scene.voix_off_scene || scene.narration || '').trim());
+      if (invalid >= 0) throw new Error(`La scène ${ids[invalid]} doit avoir son propre prompt visuel et un segment de narration non vide.`);
+      const prompts = scenes.map((scene) => String(scene.prompt_final || scene.description || '').toLowerCase().replace(/\s+/g, ' ').trim());
+      if (new Set(prompts).size !== prompts.length) throw new Error('Chaque scène stricte doit avoir un prompt visuel distinct; les prompts répétés sont refusés.');
+      const actorScene = scenes.find((scene) => {
+        const actor = String(scene.personnage || scene.character_id || '').trim().toLowerCase();
+        return actor && !/^(aucun|aucune|none|sans personnage|sans visage)(\b|$)/.test(actor);
+      });
+      if (actorScene) throw new Error(`Le profil strict est faceless : la scène ${actorScene.id || actorScene.scene_id || '?'} déclare un personnage identifiable.`);
+      const logoScene = scenes.find((scene) => scene.logo_requis === true);
+      if (logoScene) throw new Error(`Le profil strict n’insère pas de logo généré par IA (scène ${logoScene.id || logoScene.scene_id || '?'}); utiliser un asset de marque séparé.`);
+      const target = Number(job.input.target_duration_seconds || 60);
+      if (!Number.isFinite(target) || target < 45 || target > 90) throw new Error('Le profil strict accepte une durée cible de 45 à 90 secondes.');
+    }
+    return scenes;
+  };
   if (job.input && job.input.manifest && typeof job.input.manifest === 'object') {
     const manifest = job.input.manifest;
     if (!Array.isArray(manifest.scenes) || manifest.scenes.length === 0) {
       throw new Error('Le manifeste fourni ne contient aucune scene exploitable.');
     }
+    validateManifest(manifest);
     const characters = resolveCharacters(manifest.scenes);
+    if (strict && characters.bloquants.length) throw new Error(characters.bloquants.map((item) => item.detail).join(' '));
     return { manifest: { ...manifest, source: 'fourni_par_utilisateur' }, characters };
   }
   const sujet = job.input && job.input.sujet;
   if (!sujet) {
     throw new Error('Aucun "sujet" fourni et aucun manifeste pre-rempli : impossible de generer un script sans l\'un des deux.');
   }
-  const result = await contenu.fullVideo({ sujet });
+  const result = await contenu.fullVideo({
+    sujet,
+    production_profile: strict ? 'strict_multiscene' : undefined,
+    target_duration_seconds: strict ? Number(job.input.target_duration_seconds || 60) : undefined,
+  });
+  if (strict && (!result.provider || /mock|fallback/i.test(String(result.provider)))) {
+    throw new Error(`Le profil strict refuse la génération de script par MOCK/fallback (provider retourné : ${result.provider || 'absent'}).`);
+  }
   const output = result.output || {};
   if (!Array.isArray(output.scenes) || output.scenes.length === 0) {
     throw new Error("La generation IA (contenu.fullVideo) n'a produit aucune scene exploitable.");
   }
+  validateManifest(output);
   const characters = resolveCharacters(output.scenes);
+  if (strict && characters.bloquants.length) throw new Error(characters.bloquants.map((item) => item.detail).join(' '));
   return {
     manifest: {
       ...output,
@@ -164,14 +204,24 @@ async function stepPrepare(job) {
 
 /** PREPARING -> GENERATING_ASSETS : Visual Engine par scene (voir visualEngine.js). */
 async function stepAssets(job) {
-  const format = job.format || { width: 1080, height: 1920 };
+  const strict = isStrictMultiscene(job);
+  const format = job.format || (strict ? { width: 720, height: 1280 } : { width: 1080, height: 1920 });
   const scenes = (job.manifest && job.manifest.scenes) || [];
   const report = await visualEngine.resolveVideoAssets(scenes, {
     width: format.width,
     height: format.height,
     mode: job.mode_at_creation,
     workDir: path.join(jobWorkDir(job.id), 'assets'),
+    requireAiGeneration: strict,
+    useCache: !strict,
   });
+  if (strict) {
+    const failed = report.scenes.filter((scene) => !scene.ok || !['AI_IMAGE_GENERATED', 'AI_IMAGE_REFERENCED'].includes(scene.asset_type) || !scene.storage_url || !scene.content_sha256);
+    if (report.total < 6 || report.total > 12 || report.reussis !== report.total || failed.length) {
+      const causes = failed.map((scene) => `${scene.scene_id || 'scene'}: ${scene.erreur || 'asset IA, stockage ou hash invalide'}`).slice(0, 4).join(' | ');
+      throw new Error(`Assets stricts invalides : ${report.reussis}/${report.total} réussis; ${failed.length} asset(s) non généré(s) IA, non distinct(s) ou non stocké(s) durablement. ${causes}`);
+    }
+  }
   if (report.reussis === 0) {
     throw new Error(`Aucune des ${report.total} scene(s) n'a pu obtenir d'asset visuel (tous les providers ont echoue pour chacune) — voir assets.scenes pour le detail par scene.`);
   }
@@ -180,6 +230,7 @@ async function stepAssets(job) {
 
 /** GENERATING_ASSETS -> GENERATING_VOICE : reutilise src/agents/voiceOver.js + voiceStudio.js tels quels. Ne fabrique jamais une voix : VOICE_READY / VOICE_UNAVAILABLE / VOICE_FAILED, honnetement distingues. */
 async function stepVoice(job) {
+  const strict = isStrictMultiscene(job);
   let voice;
   try {
     voice = await voiceOver.generateForContent(job.manifest, {});
@@ -191,6 +242,22 @@ async function stepVoice(job) {
   const statutVoix = voice.configured === false
     ? 'VOICE_UNAVAILABLE'
     : (hasReadyTrack ? 'VOICE_READY' : 'VOICE_FAILED');
+  if (strict) {
+    const scenes = (job.manifest && job.manifest.scenes) || [];
+    const sceneIds = scenes.map((scene, i) => String(scene.id || scene.scene_id || `scene_${i + 1}`));
+    const byId = new Map(tracks.map((track) => [String(track.scene_id), track]));
+    const missing = sceneIds.filter((sceneId) => {
+      const track = byId.get(sceneId);
+      return !track || !track.audio_url || !(Number(track.duration_estimated_seconds) > 0)
+        || !(Number(track.end_seconds) > Number(track.start_seconds));
+    });
+    if (voice.configured !== true || tracks.length !== scenes.length || missing.length) {
+      throw new Error(`Rémy Neural indisponible/incomplet : ${missing.length} scène(s) sans audio réel mesuré (${missing.slice(0, 4).join(', ')}); aucune piste silencieuse ne sera acceptée.`);
+    }
+    if (!/rémy|remy/i.test(String(voice.voice || '')) || !/neural/i.test(String(voice.voice || ''))) {
+      throw new Error(`Le profil strict exige la voix Rémy Neural; voix renvoyée : ${voice.voice || 'absente'}.`);
+    }
+  }
   return { voice: { ...voice, statut_voix: statutVoix } };
 }
 
@@ -203,6 +270,7 @@ async function stepVoice(job) {
  * duree par defaut. Aucune limite de duree maximale n'est appliquee.
  */
 async function stepCompose(job) {
+  const strict = isStrictMultiscene(job);
   const workDir = jobWorkDir(job.id);
   const audioDir = path.join(workDir, 'audio');
   await fs.mkdir(audioDir, { recursive: true });
@@ -245,9 +313,40 @@ async function stepCompose(job) {
     throw new Error(`Timeline invalide (${failing}) : le rendu ne peut pas etre lance sur une timeline incoherente.`);
   }
 
+  if (strict) {
+    const duration = Number(timeline.total_duration_seconds);
+    if (!Number.isFinite(duration) || duration < 45 || duration > 90) {
+      throw new Error(`Durée réelle issue des voix mesurées hors plage 45–90 secondes (${duration || 0}s).`);
+    }
+    const missingAudio = scenes.filter((scene, i) => {
+      const id = String(scene.id || scene.scene_id || `scene_${i + 1}`);
+      return !audioSegments[id];
+    });
+    if (downloadIssues.length || missingAudio.length) {
+      throw new Error(`Audio strict incomplet : ${downloadIssues.length} téléchargement(s) échoué(s), ${missingAudio.length} piste(s) locale(s) absente(s).`);
+    }
+    const silenceChecks = [];
+    for (const scene of scenes) {
+      const id = String(scene.id || scene.scene_id);
+      // eslint-disable-next-line no-await-in-loop
+      const result = await videoRenderer.detectAbnormalSilence(audioSegments[id], { minSilenceSeconds: 2.5, noiseDb: -42 });
+      silenceChecks.push({ scene_id: id, ...result });
+    }
+    const abnormal = silenceChecks.reduce((sum, result) => sum + result.abnormal_silence_count, 0);
+    if (abnormal) throw new Error(`Voix stricte refusée : ${abnormal} silence(s) continu(s) de 2,5 s ou plus détecté(s) dans les pistes Rémy Neural.`);
+    job.audio_silence_check = { ok: true, max_silence_seconds: 2.5, scenes: silenceChecks };
+  }
+
   const subtitlesResult = subtitles.build(tracks);
   const timelineWithSubs = videoTimeline.attachSubtitleSegments(timeline, subtitlesResult.entries);
   const syncValidation = videoTimeline.validateSynchronization(timelineWithSubs, subtitlesResult.entries);
+  if (strict) {
+    const scenesWithCaptions = new Set(subtitlesResult.entries.map((entry) => String(entry.scene_id)));
+    const uncovered = scenes.filter((scene, i) => !scenesWithCaptions.has(String(scene.id || scene.scene_id || `scene_${i + 1}`)));
+    if (subtitlesResult.complet !== true || subtitlesResult.scenes_ignorees.length || uncovered.length || !subtitlesResult.srt || syncValidation.ok !== true) {
+      throw new Error(`Sous-titres/synchronisation incomplets : ${uncovered.length} scène(s) sans sous-titre, ${subtitlesResult.scenes_ignorees.length} piste(s) ignorée(s).`);
+    }
+  }
 
   let srtLocalPath = null;
   if (subtitlesResult.srt) {
@@ -260,6 +359,7 @@ async function stepCompose(job) {
     timeline: timelineWithSubs,
     timeline_validation: timelineValidation,
     compose: { audio_segments: audioSegments, download_issues: downloadIssues },
+    ...(strict ? { audio_silence_check: job.audio_silence_check } : {}),
   };
 }
 
@@ -335,7 +435,9 @@ async function stepRender(job) {
 
 /** RENDERING -> QUALITY_CHECK : controle reel du fichier (videoFileQualityCheck.js, ffprobe) + timeline + synchronisation. */
 async function stepQualityCheck(job) {
-  const format = job.format || { width: 1080, height: 1920 };
+  const strict = isStrictMultiscene(job);
+  const format = job.format || (strict ? { width: 720, height: 1280 } : { width: 1080, height: 1920 });
+  const generatedAssets = ((job.assets && job.assets.scenes) || []).filter((scene) => scene.ok);
   const result = await videoFileQualityCheck.check(job.render.outputPath, {
     expected: {
       width: format.width,
@@ -343,7 +445,17 @@ async function stepQualityCheck(job) {
       ratio: format.width / format.height,
       minDurationSeconds: job.render.durationSeconds,
       expectedSceneCount: job.render.sceneCount,
-      assetsUsed: ((job.assets && job.assets.scenes) || []).filter((s) => s.ok),
+      assetsUsed: generatedAssets,
+      ...(strict ? {
+        requireMp4Container: true,
+        requireH264: true,
+        requireAAC: true,
+        minWidth: 720,
+        minHeight: 1280,
+        expectedFps: Number(process.env.VIDEO_FPS) || 30,
+        minDurationSecondsStrict: 45,
+        maxDurationSeconds: 90,
+      } : {}),
     },
   });
 
@@ -358,12 +470,37 @@ async function stepQualityCheck(job) {
   // Verdict global : le fichier ET la timeline ET la synchronisation doivent
   // etre conformes. Un visuel de personnage officiel genere et non conforme
   // (FAIL sur un asset AI_IMAGE_REFERENCED) rend le job NEEDS_REVIEW.
-  const ok = result.ok === true && timelineValidation.ok !== false && syncValidation.ok !== false;
+  const strictAssetsOk = !strict || (
+    generatedAssets.length === ((job.manifest && job.manifest.scenes) || []).length
+    && generatedAssets.every((asset) => asset.asset_type === 'AI_IMAGE_GENERATED' && asset.storage_url && asset.content_sha256)
+    && new Set(generatedAssets.map((asset) => asset.content_sha256)).size === generatedAssets.length
+  );
+  const strictRenderOk = !strict || Boolean(job.render.subtitlesBurned && job.subtitles && job.subtitles.complet);
+  const strictVoiceOk = !strict || Boolean(job.voice && job.voice.configured === true && job.render.audioSource === 'voice'
+    && job.voice.tracks.length === ((job.manifest && job.manifest.scenes) || []).length
+    && job.audio_silence_check && job.audio_silence_check.ok === true);
+  const strictAssetCheck = strict ? [{
+    id: 'images_ia_distinctes_stockees',
+    status: strictAssetsOk ? 'pass' : 'fail',
+    detail: strictAssetsOk
+      ? `${generatedAssets.length} images IA distinctes et stockées durablement.`
+      : 'Une scène ne possède pas une image IA distincte stockée dans Supabase.',
+  }, {
+    id: 'sous_titres_brules',
+    status: strictRenderOk ? 'pass' : 'fail',
+    detail: strictRenderOk ? 'Sous-titres complets incorporés au rendu.' : 'Sous-titres manquants ou non incorporés dans le MP4.',
+  }, {
+    id: 'voix_remy_sans_silence_anormal',
+    status: strictVoiceOk ? 'pass' : 'fail',
+    detail: strictVoiceOk ? 'Voix Rémy Neural complète, sans plage silencieuse anormale détectée.' : 'Voix manquante, partielle, silencieuse ou issue d’un fallback.',
+  }] : [];
+  const ok = result.ok === true && timelineValidation.ok !== false && syncValidation.ok !== false && strictAssetsOk && strictRenderOk && strictVoiceOk;
   const needsReview = scenesAverifier.length > 0;
 
   return {
     quality_check: {
       ...result,
+      checks: [...(result.checks || []), ...strictAssetCheck],
       ok,
       timeline: timelineValidation,
       synchronisation: syncValidation,
@@ -372,6 +509,9 @@ async function stepQualityCheck(job) {
       review_reason: needsReview
         ? `Scenes a verifier (coherence de personnage officiel insuffisante) : ${scenesAverifier.join(', ')}.`
         : null,
+      production_profile: strict ? 'strict_multiscene' : null,
+      generated_asset_count: generatedAssets.length,
+      distinct_generated_asset_count: new Set(generatedAssets.map((asset) => asset.content_sha256).filter(Boolean)).size,
     },
   };
 }

@@ -5,6 +5,7 @@ const graphicProvider = require('./graphicProvider');
 const existingAssetProvider = require('./existingAssetProvider');
 const pollinationsProvider = require('./pollinationsProvider');
 const characterReferenceProvider = require('./characterReferenceProvider');
+const huggingFaceTextToImageProvider = require('./huggingFaceTextToImageProvider');
 
 /**
  * REGISTRE DES PROVIDERS D'IMAGE (architecture provider-agnostic demandee) :
@@ -29,6 +30,7 @@ const characterReferenceProvider = require('./characterReferenceProvider');
  */
 const PROVIDERS = Object.freeze({
   character_reference: characterReferenceProvider,
+  huggingface_text_to_image: huggingFaceTextToImageProvider,
   graphic_engine: graphicProvider,
   existing_asset: existingAssetProvider,
   pollinations: pollinationsProvider,
@@ -81,6 +83,13 @@ async function runChain(order, params) {
       // eslint-disable-next-line no-await-in-loop
       const asset = await provider.generate(params);
       attempts.push({ provider: providerId, ok: true, duration_ms: Date.now() - startedAt });
+      if (providerId === 'existing_asset') {
+        logger.info('EXISTING_ASSET', { asset_type: asset.asset_type || 'EXISTING_ASSET' });
+      } else if (attempts.some((attempt) => attempt.ok === false)) {
+        logger.warn('FALLBACK', { provider: providerId, asset_type: asset.asset_type || null });
+      } else if (asset.asset_type === 'AI_IMAGE' || asset.asset_type === 'AI_IMAGE_REFERENCED') {
+        logger.info('AI_IMAGE_GENERATED', { provider: providerId, model: asset.model || null, asset_type: asset.asset_type });
+      }
       return { asset, attempts };
     } catch (err) {
       attempts.push({
@@ -104,7 +113,11 @@ async function runChain(order, params) {
  * adaptee a la scene. Ne met rien en cache et ne stocke rien : voir
  * visualEngine.js pour l'orchestration complete (cache + stockage durable).
  */
-async function generateAsset({ scene = {}, width, height, mode, seed } = {}) {
+async function generateAsset({ scene = {}, width, height, mode, seed, requireAiGeneration = false } = {}) {
+  if (requireAiGeneration) {
+    const asset = await huggingFaceTextToImageProvider.generate({ scene, width, height, seed });
+    return { ...asset, provider_attempts: [{ provider: 'huggingface_text_to_image', ok: true, model: asset.model }] };
+  }
   const order = buildProviderOrder(scene);
   const { asset, attempts } = await runChain(order, { scene, width, height, mode, seed });
   return { ...asset, provider_attempts: attempts };
