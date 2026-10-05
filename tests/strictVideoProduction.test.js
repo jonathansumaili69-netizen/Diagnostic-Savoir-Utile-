@@ -15,14 +15,17 @@ const oldNetlify = process.env.NETLIFY;
 const oldLambda = process.env.LAMBDA_TASK_ROOT;
 const oldToken = process.env.HF_TOKEN;
 const oldModel = process.env.HF_TEXT_TO_IMAGE_MODEL;
+const oldImageBackend = process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
 process.env.CONQUISTADOR_DATA_DIR = path.join(tempRoot, 'data');
 delete process.env.SUPABASE_URL;
 delete process.env.SUPABASE_SERVICE_KEY;
 delete process.env.NETLIFY;
 delete process.env.LAMBDA_TASK_ROOT;
 delete process.env.HF_TOKEN;
+delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
 
 const imageProvider = require('../src/core/imageProviders/huggingFaceTextToImageProvider');
+const tinySdCpuProvider = require('../src/core/imageProviders/tinySdCpuProvider');
 const imageProviders = require('../src/core/imageProviders');
 const videoOrchestrator = require('../src/core/videoOrchestrator');
 const qualityCheck = require('../src/core/videoFileQualityCheck');
@@ -131,28 +134,91 @@ test('HF text-to-image: appel provider réel simulé, image PNG originale et has
   }
 });
 
-test('profil strict: une panne HF fait échouer le job sans asset existant, fallback ou succès fictif', async () => {
+test('profil strict: Tiny-SD CPU génère sans HF_TOKEN ni fallback payant', async () => {
+  const oldBackend = process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
   delete process.env.HF_TOKEN;
-  const { job, created } = await videoOrchestrator.createVideo({
-    manifest: makeManifest(),
-    production_profile: 'strict_multiscene',
-    target_duration_seconds: 60,
-    format: { ratio: '9:16', width: 720, height: 1280 },
-    idempotency_key: 'strict-hf-missing-token-test',
+  delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
+  let captured;
+  const png = await sharp({ create: { width: 96, height: 96, channels: 3, background: '#d8d0be' } }).png().toBuffer();
+  const restoreGenerator = tinySdCpuProvider.setGenerateForTest(async (params) => {
+    captured = params;
+    return {
+      buffer: png,
+      contentType: 'image/png',
+      provider: 'tiny-sd-cpu',
+      model: 'segmind/tiny-sd',
+      asset_type: 'AI_IMAGE_GENERATED',
+      width: params.width,
+      height: params.height,
+      content_sha256: 'a'.repeat(64),
+      generation: { device: 'CPU', reference_image_conditioning: false },
+    };
   });
-  assert.equal(created, true);
-  assert.equal(job.status, 'FAILED');
-  assert.equal(job.error_step, 'GENERATING_ASSETS');
-  assert.match(job.error, /HF_TOKEN absent/);
-  assert.equal(job.output_url, undefined);
-  assert.equal(job.render, null);
-  assert.equal(job.assets, null);
-  assert.ok(job.manifest.scenes.length >= 6);
-  // Un appel direct en profil strict doit aussi court-circuiter toute la chaîne de fallback.
-  await assert.rejects(
-    () => imageProviders.generateAsset({ scene: { id: 'strict-no-token', prompt_final: 'Un bureau moderne' }, width: 720, height: 1280, requireAiGeneration: true }),
-    /HF_TOKEN absent/,
-  );
+  try {
+    assert.equal(tinySdCpuProvider.status().requires_api_key, false);
+    const asset = await imageProviders.generateAsset({
+      scene: { id: 'cpu-scene-1', description: 'Un carnet bleu sur un bureau clair' },
+      width: 720,
+      height: 1280,
+      requireAiGeneration: true,
+    });
+    assert.equal(captured.scene.id, 'cpu-scene-1');
+    assert.equal(asset.provider, 'tiny-sd-cpu');
+    assert.equal(asset.model, 'segmind/tiny-sd');
+    assert.equal(asset.asset_type, 'AI_IMAGE_GENERATED');
+    assert.equal(asset.provider_attempts[0].provider, 'tiny_sd_cpu');
+    assert.equal(asset.generation.reference_image_conditioning, false);
+  } finally {
+    restoreGenerator();
+    if (oldBackend === undefined) delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
+    else process.env.IMAGE_TEXT_TO_IMAGE_BACKEND = oldBackend;
+  }
+});
+
+test('profil strict: backend HF non autorisé échoue fermé avant réseau', async () => {
+  const oldBackend = process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
+  delete process.env.HF_TOKEN;
+  process.env.IMAGE_TEXT_TO_IMAGE_BACKEND = 'huggingface';
+  try {
+    await assert.rejects(
+      () => imageProviders.generateAsset({ scene: { id: 'strict-unknown', prompt_final: 'Un bureau moderne' }, width: 720, height: 1280, requireAiGeneration: true }),
+      /Backend strict d’image non autorisé.*tiny_sd_cpu.*aucun provider de repli ne sera appelé/,
+    );
+  } finally {
+    if (oldBackend === undefined) delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
+    else process.env.IMAGE_TEXT_TO_IMAGE_BACKEND = oldBackend;
+  }
+});
+
+test('profil strict: un backend non gratuit échoue sans asset de repli ou faux succès', async () => {
+  const oldBackend = process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
+  delete process.env.HF_TOKEN;
+  process.env.IMAGE_TEXT_TO_IMAGE_BACKEND = 'huggingface';
+  try {
+    const { job, created } = await videoOrchestrator.createVideo({
+      manifest: makeManifest(),
+      production_profile: 'strict_multiscene',
+      target_duration_seconds: 60,
+      format: { ratio: '9:16', width: 720, height: 1280 },
+      idempotency_key: 'strict-paid-backend-blocked-test',
+    });
+    assert.equal(created, true);
+    assert.equal(job.status, 'FAILED');
+    assert.equal(job.error_step, 'GENERATING_ASSETS');
+    assert.match(job.error, /Backend strict d’image non autorisé/);
+    assert.equal(job.output_url, undefined);
+    assert.equal(job.render, null);
+    assert.equal(job.assets, null);
+    assert.ok(job.manifest.scenes.length >= 6);
+    // Un appel direct strict refuse aussi ce backend avant toute requête réseau.
+    await assert.rejects(
+      () => imageProviders.generateAsset({ scene: { id: 'strict-no-paid-provider', prompt_final: 'Un bureau moderne' }, width: 720, height: 1280, requireAiGeneration: true }),
+      /Backend strict d’image non autorisé.*tiny_sd_cpu/,
+    );
+  } finally {
+    if (oldBackend === undefined) delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
+    else process.env.IMAGE_TEXT_TO_IMAGE_BACKEND = oldBackend;
+  }
 });
 
 test('ffprobe strict: accepte H.264/AAC MP4 vertical 720×1280 en 30 fps entre 45 et 90 s', async () => {
@@ -205,5 +271,6 @@ test.after(() => {
   if (oldLambda === undefined) delete process.env.LAMBDA_TASK_ROOT; else process.env.LAMBDA_TASK_ROOT = oldLambda;
   if (oldToken === undefined) delete process.env.HF_TOKEN; else process.env.HF_TOKEN = oldToken;
   if (oldModel === undefined) delete process.env.HF_TEXT_TO_IMAGE_MODEL; else process.env.HF_TEXT_TO_IMAGE_MODEL = oldModel;
+  if (oldImageBackend === undefined) delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND; else process.env.IMAGE_TEXT_TO_IMAGE_BACKEND = oldImageBackend;
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });

@@ -6,6 +6,7 @@ const existingAssetProvider = require('./existingAssetProvider');
 const pollinationsProvider = require('./pollinationsProvider');
 const characterReferenceProvider = require('./characterReferenceProvider');
 const huggingFaceTextToImageProvider = require('./huggingFaceTextToImageProvider');
+const tinySdCpuProvider = require('./tinySdCpuProvider');
 
 /**
  * REGISTRE DES PROVIDERS D'IMAGE (architecture provider-agnostic demandee) :
@@ -31,6 +32,7 @@ const huggingFaceTextToImageProvider = require('./huggingFaceTextToImageProvider
 const PROVIDERS = Object.freeze({
   character_reference: characterReferenceProvider,
   huggingface_text_to_image: huggingFaceTextToImageProvider,
+  tiny_sd_cpu: tinySdCpuProvider,
   graphic_engine: graphicProvider,
   existing_asset: existingAssetProvider,
   pollinations: pollinationsProvider,
@@ -115,8 +117,14 @@ async function runChain(order, params) {
  */
 async function generateAsset({ scene = {}, width, height, mode, seed, requireAiGeneration = false } = {}) {
   if (requireAiGeneration) {
-    const asset = await huggingFaceTextToImageProvider.generate({ scene, width, height, seed });
-    return { ...asset, provider_attempts: [{ provider: 'huggingface_text_to_image', ok: true, model: asset.model }] };
+    const backendId = String(process.env.IMAGE_TEXT_TO_IMAGE_BACKEND || 'tiny_sd_cpu').trim().toLowerCase();
+    const strictProviders = {
+      tiny_sd_cpu: tinySdCpuProvider,
+    };
+    const provider = strictProviders[backendId];
+    if (!provider) throw new Error(`Backend strict d’image non autorisé : "${backendId}". Seul "tiny_sd_cpu" est autorisé; aucun provider de repli ne sera appelé.`);
+    const asset = await provider.generate({ scene, width, height, seed });
+    return { ...asset, provider_attempts: [{ provider: backendId, ok: true, model: asset.model }] };
   }
   const order = buildProviderOrder(scene);
   const { asset, attempts } = await runChain(order, { scene, width, height, mode, seed });

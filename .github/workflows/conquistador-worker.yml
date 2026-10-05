@@ -3,10 +3,7 @@ name: Conquistador Render Worker
 # avancer via le point d'entree EXISTANT (scripts/render-worker.js, qui
 # reutilise src/core/videoOrchestrator.js — aucun orchestrateur parallele),
 # puis S'ARRETE. Aucun keep-alive artificiel, aucune boucle while(true).
-#
-# Declenchement AUTOMATIQUE toutes les 5 heures (cron UTC) + declenchement
-# manuel (workflow_dispatch) conserve. L'idempotence (videoJobs +
-# claim/lock en base) empeche tout double traitement entre deux passages.
+# Le backend Tiny-SD CPU utilise des poids publics, sans Inference Providers.
 
 on:
   schedule:
@@ -38,18 +35,19 @@ jobs:
     name: Traitement des video_jobs
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    # Seule la configuration non sensible est commune a toutes les etapes.
-    # Les secrets sont limites aux commandes qui en ont besoin.
+    # Le profil strict n'autorise que Tiny-SD CPU sur poids publics.
     env:
-      HF_TEXT_TO_IMAGE_MODEL: Qwen/Qwen-Image
-      IMAGE_IMG2IMG_PROVIDER: huggingface
-      IMAGE_IMG2IMG_MODEL: Qwen/Qwen-Image-Edit-2511
+      IMAGE_TEXT_TO_IMAGE_BACKEND: tiny_sd_cpu
+      TINY_SD_CPU_WIDTH: "504"
+      TINY_SD_CPU_HEIGHT: "896"
+      TINY_SD_CPU_STEPS: "25"
       VOICE_PROVIDER: edge-tts
       VOICE_NAME: Rémy Neural
       VOICE_STUDIO_TIMEOUT_MS: "20000"
       SUPABASE_MEDIA_BUCKET: conquistador-media
       KILL_SWITCH_DEFAULT: "false"
       CONQUISTADOR_DATA_DIR: /tmp/conquistador-data
+
     steps:
       - name: Checkout du depot
         uses: actions/checkout@v7
@@ -59,6 +57,19 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Python 3.12 pour Tiny-SD CPU
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Runtime Tiny-SD CPU (poids publics, aucune API d'inference)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 'torch==2.6.0+cpu'
+          python -m pip install --disable-pip-version-check --no-cache-dir 'diffusers==0.32.2' 'transformers==4.51.3' 'accelerate==1.6.0' 'safetensors'
+          python -c "import torch, diffusers, transformers; print('cpu_only=', not torch.cuda.is_available(), 'torch=', torch.__version__, 'diffusers=', diffusers.__version__, 'transformers=', transformers.__version__)"
 
       - name: Installation des dependances (reproductible)
         run: npm ci --no-audit --no-fund
@@ -70,9 +81,10 @@ jobs:
           ffmpeg -version | head -1
           ffprobe -version | head -1
 
-      - name: Verification prealable (syntaxe JavaScript + suite complete)
+      - name: Verification prealable (syntaxe JavaScript, Python + suite complete)
         run: |
           find src scripts netlify tests -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          python3 -m py_compile scripts/tiny_sd_cpu_generate.py
           npm test
 
       - name: Preflight des secrets Worker (aucune valeur affichee)
@@ -80,20 +92,15 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
-          IMAGE_IMG2IMG_PROVIDER: huggingface
+          IMAGE_IMG2IMG_PROVIDER: ""
           WORKER_VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.validate_only == true }}
         run: node scripts/worker-preflight.js
 
-      - name: Etat du provider image-to-image (Hugging Face)
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          IMAGE_IMG2IMG_PROVIDER: huggingface
-          IMAGE_IMG2IMG_MODEL: Qwen/Qwen-Image-Edit-2511
+      - name: Etat du backend image selectionne (sortie assainie)
         run: |
-          node -e "const s=require('./src/core/imageProviders/providerAdapter').status(); console.log(JSON.stringify({configured:s.configure,provider:s.provider,token_present:s.cle_detectee,model:s.modele}));"
-          node -e "const s=require('./src/core/imageProviders/huggingFaceTextToImageProvider').status(); console.log(JSON.stringify({configured:s.configured,provider:s.provider,model:s.model,reference_image_conditioning:s.reference_image_conditioning}));"
+          echo "backend=$IMAGE_TEXT_TO_IMAGE_BACKEND"
+          node -e "console.log(JSON.stringify(require('./src/core/imageProviders/tinySdCpuProvider').status()))"
 
       - name: Sante Voice Studio (externe, sortie assainie)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
@@ -107,12 +114,13 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_TEXT_TO_IMAGE_MODEL: Qwen/Qwen-Image
+          IMAGE_TEXT_TO_IMAGE_BACKEND: tiny_sd_cpu
+          IMAGE_IMG2IMG_PROVIDER: ""
+          TINY_SD_CPU_WIDTH: "504"
+          TINY_SD_CPU_HEIGHT: "896"
+          TINY_SD_CPU_STEPS: "25"
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # Les clés de fournisseurs LLM payants ne sont volontairement pas transmises.
           WORKER_JOB_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.job_id || '' }}
         run: |
           if [ -n "$WORKER_JOB_ID" ]; then

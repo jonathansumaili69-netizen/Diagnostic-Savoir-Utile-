@@ -139,7 +139,7 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
 
   const contentSha256 = asset.content_sha256 || crypto.createHash('sha256').update(asset.buffer).digest('hex');
   if (requireAiGeneration && asset.asset_type !== 'AI_IMAGE_GENERATED') {
-    throw new Error(`La scène ${scene.id || index + 1} n’a pas été produite par le générateur IA Hugging Face (${asset.asset_type || 'type inconnu'}).`);
+    throw new Error(`La scène ${scene.id || index + 1} n’a pas été produite par un générateur IA d’images (${asset.asset_type || 'type inconnu'}).`);
   }
   if (requireAiGeneration && seenHashes && seenHashes.has(contentSha256)) {
     throw new Error(`L’image de la scène ${scene.id || index + 1} est un doublon binaire d’une autre scène; le job strict est refusé.`);
