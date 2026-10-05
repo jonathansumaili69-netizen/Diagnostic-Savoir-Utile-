@@ -20,6 +20,11 @@ on:
         required: false
         type: boolean
         default: false
+      voice_check_only:
+        description: "Vérifier le endpoint vocal sans installer Tiny-SD ni lancer le Worker"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -34,7 +39,7 @@ jobs:
   render:
     name: Traitement des video_jobs
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 120
     # Le profil strict n'autorise que Tiny-SD CPU sur poids publics.
     env:
       IMAGE_TEXT_TO_IMAGE_BACKEND: tiny_sd_cpu
@@ -59,13 +64,13 @@ jobs:
           cache: npm
 
       - name: Python 3.12 pour Tiny-SD CPU
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
+        if: ${{ github.event_name != 'workflow_dispatch' || (inputs.validate_only != true && inputs.voice_check_only != true) }}
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Runtime Tiny-SD CPU (poids publics, aucune API d'inference)
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
+        if: ${{ github.event_name != 'workflow_dispatch' || (inputs.validate_only != true && inputs.voice_check_only != true) }}
         run: |
           python -m pip install --disable-pip-version-check --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 'torch==2.6.0+cpu'
           python -m pip install --disable-pip-version-check --no-cache-dir 'diffusers==0.32.2' 'transformers==4.51.3' 'accelerate==1.6.0' 'safetensors'
@@ -75,6 +80,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Installation FFmpeg + ffprobe
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.voice_check_only != true }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
@@ -82,6 +88,7 @@ jobs:
           ffprobe -version | head -1
 
       - name: Verification prealable (syntaxe JavaScript, Python + suite complete)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.voice_check_only != true }}
         run: |
           find src scripts netlify tests -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           python3 -m py_compile scripts/tiny_sd_cpu_generate.py
@@ -94,7 +101,7 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
           IMAGE_IMG2IMG_PROVIDER: ""
-          WORKER_VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.validate_only == true }}
+          WORKER_VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && (inputs.validate_only == true || inputs.voice_check_only == true) }}
         run: node scripts/worker-preflight.js
 
       - name: Etat du backend image selectionne (sortie assainie)
@@ -107,10 +114,24 @@ jobs:
         env:
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
         run: |
-          node -e "require('./src/core/voiceStudio').health().then(h=>{console.log(JSON.stringify({configured:h.configured,available:h.available,provider:h.provider,voice:h.voice})); if(!h.available) console.warn('Voice Studio indisponible; aucun detail de connexion n est journalise.');})"
+          node <<'NODE'
+          const { health } = require('./src/core/voiceStudio');
+          health().then((h) => {
+            const endpoint = String(process.env.VOICE_STUDIO_API_URL || '');
+            const rawReason = String(h.reason || '');
+            const reason = endpoint ? rawReason.split(endpoint).join('[endpoint masqué]') : rawReason;
+            console.log(JSON.stringify({ configured: h.configured, available: h.available, provider: h.provider, voice: h.voice, reason: reason || null }));
+            if (!h.available) process.exitCode = 1;
+          }).catch((error) => {
+            const endpoint = String(process.env.VOICE_STUDIO_API_URL || '');
+            const message = String(error.message || error);
+            console.error(`Voice Studio health check failed: ${endpoint ? message.split(endpoint).join('[endpoint masqué]') : message}`);
+            process.exitCode = 1;
+          });
+          NODE
 
       - name: Execution du worker (ephemere, un passage)
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
+        if: ${{ github.event_name != 'workflow_dispatch' || (inputs.validate_only != true && inputs.voice_check_only != true) }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

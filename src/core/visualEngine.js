@@ -86,6 +86,78 @@ async function tryHydrateFromCache(cacheParams) {
 }
 
 /**
+ * Réhydrate les assets déjà validés et stockés par un job interrompu.
+ * Cette voie est volontairement distincte du cache : elle s'appuie sur les
+ * références persistées dans video_jobs, vérifie les octets et ne génère ni
+ * ne réuploade jamais une image existante.
+ */
+async function hydratePersistedVideoAssets(scenes = [], persisted = null, { width, height, workDir = null } = {}) {
+  if (!persisted) return null;
+  const list = Array.isArray(scenes) ? scenes : [];
+  const entries = Array.isArray(persisted.scenes) ? persisted.scenes : [];
+  if (list.length === 0 || entries.length !== list.length) {
+    throw new Error('Ensemble d’assets persistés incomplet; reprise arrêtée sans régénérer les images.');
+  }
+  const byId = new Map(entries.map((entry) => [String(entry.scene_id), entry]));
+  const results = [];
+  const seenHashes = new Set();
+  for (let i = 0; i < list.length; i += 1) {
+    const scene = list[i] && typeof list[i] === 'object' ? list[i] : {};
+    const sceneId = String(scene.id || scene.scene_id || `scene_${i + 1}`);
+    const entry = byId.get(sceneId);
+    if (!entry || entry.ok !== true || entry.asset_type !== 'AI_IMAGE_GENERATED'
+      || !entry.storage_url || !/^[a-f0-9]{64}$/i.test(String(entry.content_sha256 || ''))
+      || Number(entry.width) !== Number(width) || Number(entry.height) !== Number(height)) {
+      throw new Error(`Asset persisté ${sceneId} incomplet ou non conforme; aucune régénération automatique ne sera tentée.`);
+    }
+    let assetUrl;
+    try {
+      assetUrl = new URL(entry.storage_url);
+    } catch {
+      throw new Error(`URL de l’asset persisté ${sceneId} invalide; aucune régénération automatique ne sera tentée.`);
+    }
+    if (assetUrl.protocol !== 'https:' || !assetUrl.hostname.endsWith('.supabase.co')) {
+      throw new Error(`URL de l’asset persisté ${sceneId} refusée; HTTPS Supabase requis.`);
+    }
+    // eslint-disable-next-line no-await-in-loop
+    const response = await fetch(assetUrl.href);
+    if (!response.ok) throw new Error(`Asset persisté ${sceneId} inaccessible (HTTP ${response.status}); aucune régénération ne sera tentée.`);
+    // eslint-disable-next-line no-await-in-loop
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const digest = crypto.createHash('sha256').update(buffer).digest('hex');
+    if (digest !== String(entry.content_sha256).toLowerCase()) {
+      throw new Error(`Hash de l’asset persisté ${sceneId} invalide; aucune régénération automatique ne sera tentée.`);
+    }
+    if (buffer.length < 24 || !buffer.subarray(0, 8).equals(Buffer.from('\x89PNG\r\n\x1a\n', 'binary'))
+      || buffer.readUInt32BE(16) !== Number(width) || buffer.readUInt32BE(20) !== Number(height)) {
+      throw new Error(`Dimensions ou format PNG de l’asset persisté ${sceneId} non conformes; aucune régénération ne sera tentée.`);
+    }
+    if (seenHashes.has(digest)) throw new Error(`Hash d’image dupliqué sur la scène ${sceneId}; reprise stricte refusée.`);
+    seenHashes.add(digest);
+    let localPath = entry.local_path || null;
+    if (workDir) {
+      // eslint-disable-next-line no-await-in-loop
+      await fs.mkdir(workDir, { recursive: true });
+      localPath = path.join(workDir, `${sceneFileStem(scene, i)}.png`);
+      // eslint-disable-next-line no-await-in-loop
+      await fs.writeFile(localPath, buffer);
+    }
+    results.push({ ...entry, scene_id: sceneId, local_path: localPath, cache_hit: true, storage_url: assetUrl.href, url: assetUrl.href });
+  }
+  return {
+    total: results.length,
+    reussis: results.length,
+    echecs: 0,
+    continuite_garantie: true,
+    personnages_officiels: persisted.personnages_officiels || {
+      scenes_concernees: 0, coherence_pass: 0, coherence_review: 0, coherence_fail: 0, scenes_a_verifier: [],
+    },
+    scenes: results,
+    rehydrated_existing_assets: true,
+  };
+}
+
+/**
  * Controle de coherence d'une scene a personnage officiel.
  * Renvoie null si la scene ne cite aucun personnage officiel (rien a
  * comparer : on ne fabrique pas une reference pour "pouvoir comparer").
@@ -261,4 +333,10 @@ async function resolveVideoAssets(scenes = [], options = {}) {
   };
 }
 
-module.exports = { resolveSceneAsset, resolveVideoAssets, cacheParamsFor, evaluateCharacterConsistency };
+module.exports = {
+  resolveSceneAsset,
+  resolveVideoAssets,
+  hydratePersistedVideoAssets,
+  cacheParamsFor,
+  evaluateCharacterConsistency,
+};

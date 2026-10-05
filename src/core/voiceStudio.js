@@ -125,7 +125,11 @@ async function health() {
   try {
     const response = await request('/health');
     const data = await response.json();
-    return { configured: true, available: data.neural === true || data.edge === true, provider: config.brand.voiceProvider, voice: config.brand.voiceName };
+    const available = data.neural === true || data.edge === true;
+    const reason = available
+      ? null
+      : String(data.reason || data.error || `Le endpoint /health répond mais n’annonce aucun moteur disponible (neural=${data.neural === true}, edge=${data.edge === true}).`);
+    return { configured: true, available, provider: config.brand.voiceProvider, voice: config.brand.voiceName, reason };
   } catch (err) {
     return { configured: Boolean(studioBaseUrl()), available: false, provider: config.brand.voiceProvider, voice: config.brand.voiceName, reason: err.message };
   }

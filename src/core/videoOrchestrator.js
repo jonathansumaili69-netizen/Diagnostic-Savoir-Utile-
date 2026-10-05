@@ -207,6 +207,15 @@ async function stepAssets(job) {
   const strict = isStrictMultiscene(job);
   const format = job.format || (strict ? { width: 720, height: 1280 } : { width: 1080, height: 1920 });
   const scenes = (job.manifest && job.manifest.scenes) || [];
+  if (strict && job.assets) {
+    const hydrated = await visualEngine.hydratePersistedVideoAssets(scenes, job.assets, {
+      width: format.width,
+      height: format.height,
+      workDir: path.join(jobWorkDir(job.id), 'assets'),
+    });
+    logger.info('videoOrchestrator: assets IA persistés repris sans régénération', { job_id: job.id, assets: hydrated.reussis });
+    return { assets: hydrated };
+  }
   const report = await visualEngine.resolveVideoAssets(scenes, {
     width: format.width,
     height: format.height,
@@ -404,8 +413,19 @@ async function stepRender(job) {
   const format = job.format || { width: 1080, height: 1920 };
   const workDir = jobWorkDir(job.id);
   const timeline = buildRenderTimeline(job);
+  let assetScenes = (job.assets && job.assets.scenes) || [];
+  if (isStrictMultiscene(job)) {
+    const hydrated = await visualEngine.hydratePersistedVideoAssets(
+      (job.manifest && job.manifest.scenes) || [],
+      job.assets,
+      { width: format.width, height: format.height, workDir: path.join(workDir, 'assets') },
+    );
+    if (!hydrated) throw new Error('Assets stricts persistés absents; le rendu est arrêté sans régénérer d’images.');
+    assetScenes = hydrated.scenes;
+    logger.info('videoOrchestrator: images strictes existantes réhydratées pour le rendu', { job_id: job.id, assets: assetScenes.length });
+  }
   const assetsBySceneId = {};
-  for (const a of (job.assets && job.assets.scenes) || []) {
+  for (const a of assetScenes) {
     if (a.ok) assetsBySceneId[String(a.scene_id)] = a;
   }
   const scenesForRender = timeline.map((seg) => {

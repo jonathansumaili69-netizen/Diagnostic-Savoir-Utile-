@@ -55,6 +55,7 @@ test('voiceStudio.health: indisponibilité distante reste honnêtement signalée
     const result = await voiceStudio.health();
     assert.equal(result.configured, true);
     assert.equal(result.available, false);
+    assert.match(result.reason, /aucun moteur disponible/);
   } finally {
     global.fetch = originalFetch;
   }
