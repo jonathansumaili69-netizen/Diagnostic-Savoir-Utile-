@@ -123,7 +123,7 @@ async function request(path, options = {}) {
 
 async function health() {
   try {
-    const response = await request('/health');
+    const response = await request('/health', { method: 'POST' });
     const data = await response.json();
     const available = data.neural === true || data.edge === true;
     const reason = available

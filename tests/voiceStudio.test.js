@@ -47,12 +47,18 @@ test('voiceStudio.synthesize: envoie le contrat Rémy Neural et retourne l’aud
 
 test('voiceStudio.health: indisponibilité distante reste honnêtement signalée', async () => {
   const originalFetch = global.fetch;
-  global.fetch = async () => new Response(JSON.stringify({ neural: false }), {
+  let request;
+  global.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(JSON.stringify({ neural: false }), {
     status: 200,
     headers: { 'content-type': 'application/json' },
-  });
+    });
+  };
   try {
     const result = await voiceStudio.health();
+    assert.equal(request.url, 'https://voice.example.test/health');
+    assert.equal(request.options.method, 'POST');
     assert.equal(result.configured, true);
     assert.equal(result.available, false);
     assert.match(result.reason, /aucun moteur disponible/);
