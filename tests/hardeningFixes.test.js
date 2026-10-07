@@ -326,6 +326,12 @@ test('FRONTEND: charte preserve (Fraunces + IBM Plex) et aucun secret dans le bu
   assert.equal(/Bearer\s+[A-Za-z0-9_-]{20,}/.test(files), false);
 });
 
+test('TikTok review: les liens Privacy et Terms sont visibles depuis la page officielle', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(html, /<a href="\/privacy">Politique de confidentialité<\/a>/);
+  assert.match(html, /<a href="\/terms">Conditions d’utilisation<\/a>/);
+});
+
 /* ---- Manifeste sans scene : rejet explicite ---- */
 
 test('MANIFESTE: aucune scene exploitable => echec explicite (jamais un job vide avance)', async () => {
