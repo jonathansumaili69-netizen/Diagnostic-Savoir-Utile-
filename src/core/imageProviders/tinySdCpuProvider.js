@@ -17,6 +17,9 @@ const DEFAULT_TIMEOUT_MS = 900000;
 const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 const GENERATOR_SCRIPT = path.join(PROJECT_ROOT, 'scripts', 'tiny_sd_cpu_generate.py');
 let testGenerate = null;
+let generatorService = null;
+let requestCounter = 0;
+let requestQueue = Promise.resolve();
 
 function setGenerateForTest(fn) {
   const previous = testGenerate;
@@ -52,52 +55,133 @@ function cleanDiagnostic(stderr = '') {
     .slice(0, 500);
 }
 
-function runGenerator({ inputPath, outputPath, timeoutMs }) {
-  return new Promise((resolve, reject) => {
-    const python = String(process.env.TINY_SD_PYTHON || 'python3');
-    const childEnv = { ...process.env, HF_HUB_DISABLE_IMPLICIT_TOKEN: '1' };
-    // The public weights are downloaded anonymously. Never pass account tokens
-    // to this process, and never call Hugging Face Inference Providers here.
-    delete childEnv.HF_TOKEN;
-    delete childEnv.HUGGINGFACEHUB_API_TOKEN;
-    delete childEnv.HF_API_TOKEN;
+function fatalGeneratorError(message) {
+  const error = new Error(message);
+  error.code = 'TINY_SD_FATAL';
+  return error;
+}
 
-    const child = spawn(python, [GENERATOR_SCRIPT, '--input', inputPath, '--output', outputPath], {
-      cwd: PROJECT_ROOT,
-      env: childEnv,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let stderr = '';
-    let settled = false;
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill('SIGTERM');
-      setTimeout(() => child.kill('SIGKILL'), 5000).unref();
-    }, timeoutMs);
+function rejectPending(service, error) {
+  for (const [id, pending] of service.pending) {
+    clearTimeout(pending.timer);
+    pending.reject(error);
+    service.pending.delete(id);
+  }
+}
 
-    child.stderr.on('data', (chunk) => {
-      stderr = (stderr + chunk.toString()).slice(-8000);
-    });
-    child.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(new Error(`Impossible de démarrer Tiny-SD CPU (${python}) : ${err.message}`));
-    });
-    child.on('close', (code, signal) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      if (timedOut) {
-        reject(new Error(`Tiny-SD CPU a dépassé le délai de ${timeoutMs} ms.`));
-      } else if (code !== 0) {
-        const diagnostic = cleanDiagnostic(stderr);
-        reject(new Error(`Tiny-SD CPU a échoué (code ${code}, signal ${signal || 'aucun'}). ${diagnostic}`.trim()));
-      } else {
-        resolve();
+function startGeneratorService() {
+  if (generatorService && !generatorService.child.killed) return generatorService;
+  const python = String(process.env.TINY_SD_PYTHON || 'python3');
+  const childEnv = { ...process.env, HF_HUB_DISABLE_IMPLICIT_TOKEN: '1' };
+  // Public weights are downloaded anonymously; never pass account tokens or call inference APIs.
+  delete childEnv.HF_TOKEN;
+  delete childEnv.HUGGINGFACEHUB_API_TOKEN;
+  delete childEnv.HF_API_TOKEN;
+  const child = spawn(python, [GENERATOR_SCRIPT, '--serve'], {
+    cwd: PROJECT_ROOT,
+    env: childEnv,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  const service = { child, pending: new Map(), stdoutBuffer: '', stderr: '', python };
+  generatorService = service;
+  child.stdout.setEncoding('utf8');
+  child.stdout.on('data', (chunk) => {
+    service.stdoutBuffer += chunk;
+    let newline = service.stdoutBuffer.indexOf('\n');
+    while (newline >= 0) {
+      const line = service.stdoutBuffer.slice(0, newline).trim();
+      service.stdoutBuffer = service.stdoutBuffer.slice(newline + 1);
+      newline = service.stdoutBuffer.indexOf('\n');
+      if (!line) continue;
+      let message;
+      try {
+        message = JSON.parse(line);
+      } catch {
+        rejectPending(service, fatalGeneratorError('Réponse JSON invalide du générateur Tiny-SD CPU.'));
+        if (generatorService === service) generatorService = null;
+        child.kill('SIGTERM');
+        continue;
       }
+      const id = String(message.id);
+      const pending = service.pending.get(id);
+      if (!pending) continue;
+      clearTimeout(pending.timer);
+      service.pending.delete(id);
+      if (message.ok !== true) {
+        const error = new Error(`Tiny-SD CPU a échoué : ${String(message.error || 'raison inconnue').slice(0, 500)}`);
+        if (message.fatal === true) error.code = 'TINY_SD_FATAL';
+        pending.reject(error);
+      } else {
+        pending.resolve(message);
+      }
+    }
+  });
+  child.stderr.on('data', (chunk) => {
+    service.stderr = (service.stderr + chunk.toString()).slice(-8000);
+  });
+  child.on('error', (err) => {
+    if (generatorService === service) generatorService = null;
+    rejectPending(service, fatalGeneratorError(`Impossible de démarrer Tiny-SD CPU (${python}) : ${err.message}`));
+  });
+  child.on('close', (code, signal) => {
+    const diagnostic = cleanDiagnostic(service.stderr);
+    if (generatorService === service) generatorService = null;
+    if (service.pending.size) {
+      rejectPending(service, fatalGeneratorError(`Tiny-SD CPU s’est arrêté (code ${code}, signal ${signal || 'aucun'}). ${diagnostic}`.trim()));
+    }
+  });
+  return service;
+}
+
+function requestGeneration({ prompt, width, height, steps, seed, outputPath, timeoutMs }) {
+  const service = startGeneratorService();
+  const id = String(++requestCounter);
+  const request = { id, prompt, width, height, steps, seed, output: outputPath };
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      service.pending.delete(id);
+      if (generatorService === service) generatorService = null;
+      service.child.kill('SIGTERM');
+      setTimeout(() => service.child.kill('SIGKILL'), 5000).unref();
+      reject(fatalGeneratorError(`Tiny-SD CPU a dépassé le délai de ${timeoutMs} ms.`));
+    }, timeoutMs);
+    service.pending.set(id, { resolve, reject, timer });
+    service.child.stdin.write(`${JSON.stringify(request)}\n`, (err) => {
+      if (!err) return;
+      clearTimeout(timer);
+      service.pending.delete(id);
+      if (generatorService === service) generatorService = null;
+      reject(fatalGeneratorError(`Échec d’envoi de la requête à Tiny-SD CPU : ${err.message}`));
     });
+  });
+}
+
+function runGenerator(request) {
+  const operation = requestQueue.then(() => requestGeneration(request));
+  requestQueue = operation.catch(() => {});
+  return operation;
+}
+
+async function shutdown() {
+  await requestQueue.catch(() => {});
+  const service = generatorService;
+  if (!service) return;
+  generatorService = null;
+  if (service.pending.size) rejectPending(service, new Error('Service Tiny-SD CPU arrêté avant la fin de la génération.'));
+  if (service.child.stdin && !service.child.stdin.destroyed) service.child.stdin.end();
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(forceKill);
+      clearTimeout(hardKill);
+      resolve();
+    };
+    const forceKill = setTimeout(() => service.child.kill('SIGTERM'), 3000);
+    const hardKill = setTimeout(() => service.child.kill('SIGKILL'), 5000);
+    service.child.once('close', finish);
+    if (service.child.exitCode !== null) finish();
   });
 }
 
@@ -128,11 +212,9 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
 
   const seed = crypto.randomInt(1, 2147483647);
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'conquistador-tiny-sd-'));
-  const inputPath = path.join(tempDir, 'request.json');
   const outputPath = path.join(tempDir, 'generated.png');
   try {
-    await fs.writeFile(inputPath, JSON.stringify({ prompt, width: nativeWidth, height: nativeHeight, steps, seed }), 'utf8');
-    await runGenerator({ inputPath, outputPath, timeoutMs });
+    const result = await runGenerator({ prompt, width: nativeWidth, height: nativeHeight, steps, seed, outputPath, timeoutMs });
     const raw = await fs.readFile(outputPath);
     if (!raw.length) throw new Error('Tiny-SD CPU a renvoyé une image vide.');
 
@@ -155,6 +237,9 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
       native_width: nativeWidth,
       native_height: nativeHeight,
       steps,
+      generation_seconds: result.elapsed_seconds,
+      model_load_seconds: result.model_load_seconds,
+      pipeline_reused: result.pipeline_reused === true,
       sha256,
     });
     return {
@@ -173,6 +258,9 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
         device: 'CPU',
         native_width: nativeWidth,
         native_height: nativeHeight,
+        generation_seconds: result.elapsed_seconds,
+        model_load_seconds: result.model_load_seconds,
+        pipeline_reused: result.pipeline_reused === true,
         license: 'creativeml-openrail-m',
         reference_image_conditioning: false,
       },
@@ -191,5 +279,6 @@ module.exports = {
   status,
   buildPrompt,
   generate,
+  shutdown,
   setGenerateForTest,
 };

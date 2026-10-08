@@ -140,4 +140,8 @@ function referenceProviderStatus() {
   };
 }
 
-module.exports = { PROVIDERS, buildProviderOrder, runChain, generateAsset, referenceProviderStatus };
+async function shutdown() {
+  await tinySdCpuProvider.shutdown();
+}
+
+module.exports = { PROVIDERS, buildProviderOrder, runChain, generateAsset, referenceProviderStatus, shutdown };

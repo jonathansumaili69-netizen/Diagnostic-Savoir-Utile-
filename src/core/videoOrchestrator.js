@@ -618,14 +618,17 @@ async function advanceOneStep(job) {
     return videoJobs.getJob(job.id);
   }
   const work = STEP_WORK[nextStatus];
+  const stepStartedAt = Date.now();
   try {
     const patch = work ? await work(job) : {};
+    const durationMs = Date.now() - stepStartedAt;
     const updated = await videoJobs.transition(job.id, nextStatus, patch || {});
     await idempotency.confirm('video.job.process', idempotencyKey);
+    logger.info('videoOrchestrator: etape terminee', { job_id: job.id, etape: nextStatus, duration_ms: durationMs });
     return updated;
   } catch (err) {
     await idempotency.release('video.job.process', idempotencyKey).catch(() => {});
-    logger.error('videoOrchestrator: echec a une etape du pipeline video', { job_id: job.id, etape_visee: nextStatus, error: err.message });
+    logger.error('videoOrchestrator: echec a une etape du pipeline video', { job_id: job.id, etape_visee: nextStatus, duration_ms: Date.now() - stepStartedAt, error: err.message });
     return videoJobs.markFailed(job.id, { step: nextStatus, error: err });
   }
 }

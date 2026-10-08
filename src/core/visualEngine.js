@@ -305,16 +305,31 @@ async function resolveVideoAssets(scenes = [], options = {}) {
   const list = Array.isArray(scenes) ? scenes : [];
   const results = [];
   const seenHashes = new Set();
-  for (let i = 0; i < list.length; i += 1) {
-    const scene = list[i] && typeof list[i] === 'object' ? list[i] : {};
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const resolved = await resolveSceneAsset(scene, { ...options, seenHashes, priorScenes: list.slice(0, i), index: i });
-      results.push({ ok: true, ...resolved });
-    } catch (err) {
-      logger.error('visualEngine: echec de resolution d asset pour une scene', { scene_id: scene.id || null, error: err.message });
-      results.push({ ok: false, scene_id: scene.id || scene.numero || null, erreur: err.message });
+  try {
+    for (let i = 0; i < list.length; i += 1) {
+      const scene = list[i] && typeof list[i] === 'object' ? list[i] : {};
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const resolved = await resolveSceneAsset(scene, { ...options, seenHashes, priorScenes: list.slice(0, i), index: i });
+        results.push({ ok: true, ...resolved });
+      } catch (err) {
+        logger.error('visualEngine: echec de resolution d asset pour une scene', { scene_id: scene.id || null, error: err.message });
+        results.push({ ok: false, scene_id: scene.id || scene.numero || null, erreur: err.message });
+        if (err.code === 'TINY_SD_FATAL') {
+          for (let remaining = i + 1; remaining < list.length; remaining += 1) {
+            const skippedScene = list[remaining] && typeof list[remaining] === 'object' ? list[remaining] : {};
+            results.push({
+              ok: false,
+              scene_id: skippedScene.id || skippedScene.scene_id || skippedScene.numero || null,
+              erreur: `Génération interrompue après une panne fatale du générateur Tiny-SD : ${err.message}`,
+            });
+          }
+          break;
+        }
+      }
     }
+  } finally {
+    await imageProviders.shutdown();
   }
   const withCharacter = results.filter((r) => r.ok && r.character);
   return {
