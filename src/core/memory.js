@@ -32,8 +32,15 @@ const COLLECTIONS = Object.freeze({
 let supabaseClient = null;
 let supabaseInitTried = false;
 let backendName = 'json';
+const SUPABASE_REQUEST_TIMEOUT_MS = 120000;
 const localIdempotencyLocks = new Map();
 const localRowLocks = new Map();
+
+function fetchWithTimeout(input, init = {}) {
+  const timeoutSignal = AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS);
+  const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
+  return fetch(input, { ...init, signal });
+}
 
 function getSupabaseClient() {
   if (supabaseInitTried) return supabaseClient;
@@ -46,6 +53,7 @@ function getSupabaseClient() {
     const { createClient } = require('@supabase/supabase-js');
     supabaseClient = createClient(config.memory.supabaseUrl, config.memory.supabaseServiceKey, {
       auth: { persistSession: false },
+      global: { fetch: fetchWithTimeout },
     });
     backendName = 'supabase';
     logger.info('memory: backend Supabase actif');
