@@ -7,6 +7,7 @@ const pollinationsProvider = require('./pollinationsProvider');
 const characterReferenceProvider = require('./characterReferenceProvider');
 const huggingFaceTextToImageProvider = require('./huggingFaceTextToImageProvider');
 const tinySdCpuProvider = require('./tinySdCpuProvider');
+const realisticVisionLcmCpuProvider = require('./realisticVisionLcmCpuProvider');
 
 /**
  * REGISTRE DES PROVIDERS D'IMAGE (architecture provider-agnostic demandee) :
@@ -33,6 +34,7 @@ const PROVIDERS = Object.freeze({
   character_reference: characterReferenceProvider,
   huggingface_text_to_image: huggingFaceTextToImageProvider,
   tiny_sd_cpu: tinySdCpuProvider,
+  realistic_vision_lcm_cpu: realisticVisionLcmCpuProvider,
   graphic_engine: graphicProvider,
   existing_asset: existingAssetProvider,
   pollinations: pollinationsProvider,
@@ -117,14 +119,14 @@ async function runChain(order, params) {
  */
 async function generateAsset({ scene = {}, width, height, mode, seed, requireAiGeneration = false } = {}) {
   if (requireAiGeneration) {
-    const backendId = String(process.env.IMAGE_TEXT_TO_IMAGE_BACKEND || 'tiny_sd_cpu').trim().toLowerCase();
+    const backendId = String(process.env.IMAGE_TEXT_TO_IMAGE_BACKEND || 'realistic_vision_lcm_cpu').trim().toLowerCase();
     const strictProviders = {
-      tiny_sd_cpu: tinySdCpuProvider,
+      realistic_vision_lcm_cpu: realisticVisionLcmCpuProvider,
     };
     const provider = strictProviders[backendId];
-    if (!provider) throw new Error(`Backend strict d’image non autorisé : "${backendId}". Seul "tiny_sd_cpu" est autorisé; aucun provider de repli ne sera appelé.`);
+    if (!provider) throw new Error(`Backend strict d’image non autorisé : "${backendId}". Seul "realistic_vision_lcm_cpu" est autorisé; aucun provider de repli ne sera appelé.`);
     const asset = await provider.generate({ scene, width, height, seed });
-    return { ...asset, provider_attempts: [{ provider: backendId, ok: true, model: asset.model }] };
+    return { ...asset, provider_attempts: asset.provider_attempts || [{ provider: backendId, ok: true, model: asset.model }] };
   }
   const order = buildProviderOrder(scene);
   const { asset, attempts } = await runChain(order, { scene, width, height, mode, seed });

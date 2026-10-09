@@ -1,6 +1,9 @@
-# Backend d’images IA gratuit sur CPU
+# Ancien backend Tiny-SD CPU (hors routeur strict actuel)
 
-Le profil strict peut utiliser `IMAGE_TEXT_TO_IMAGE_BACKEND=tiny_sd_cpu` pour générer une image **nouvelle** par scène avec les poids publics `segmind/tiny-sd`. Cette voie ne requiert ni `HF_TOKEN` ni appel à Hugging Face Inference Providers : le Worker télécharge anonymement les poids puis exécute Diffusers/PyTorch sur CPU. Le provider strict échoue explicitement si le runtime local ne fonctionne pas; il ne retombe ni sur une ancienne image, ni sur un provider payant.
+> **Statut (9 octobre 2026)** : Tiny-SD reste dans le dépôt à titre de compatibilité historique, mais n’est plus sélectionné automatiquement ni autorisé par le profil strict. Le worker strict utilise maintenant `realistic_vision_lcm_cpu`; voir [REALISTIC_VISION_LCM.md](REALISTIC_VISION_LCM.md).
+
+
+L’ancien provider pouvait utiliser `IMAGE_TEXT_TO_IMAGE_BACKEND=tiny_sd_cpu` pour générer une image **nouvelle** par scène avec les poids publics `segmind/tiny-sd`. Cette voie ne requiert ni `HF_TOKEN` ni appel à Hugging Face Inference Providers : le Worker télécharge anonymement les poids puis exécute Diffusers/PyTorch sur CPU. Le provider strict échoue explicitement si le runtime local ne fonctionne pas; il ne retombe ni sur une ancienne image, ni sur un provider payant.
 
 ## Modèle et droits
 
@@ -16,4 +19,4 @@ Mesure locale observée dans le Sandbox (2 CPU) : une génération réelle `504�
 
 ## Workflow
 
-Le workflow existant est verrouillé sur `tiny_sd_cpu` : il ne propose aucun sélecteur HF, ne transmet aucun `HF_TOKEN` et n’appelle aucun endpoint d’inférence externe. Les clés Groq/Gemini/OpenRouter ne sont pas transmises au Worker de rendu. Pour les jobs stricts, tout backend autre que Tiny-SD CPU échoue fermé sans fallback.
+Le workflow strict actuel est verrouillé sur `realistic_vision_lcm_cpu`; Tiny-SD n’est plus sélectionné automatiquement : il ne propose aucun sélecteur HF, ne transmet aucun `HF_TOKEN` et n’appelle aucun endpoint d’inférence externe. Les clés Groq/Gemini/OpenRouter ne sont pas transmises au Worker de rendu. Pour les jobs stricts, tout backend autre que Realistic Vision + LCM CPU échoue fermé sans fallback.

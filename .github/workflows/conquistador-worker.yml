@@ -3,7 +3,7 @@ name: Conquistador Render Worker
 # avancer via le point d'entree EXISTANT (scripts/render-worker.js, qui
 # reutilise src/core/videoOrchestrator.js — aucun orchestrateur parallele),
 # puis S'ARRETE. Aucun keep-alive artificiel, aucune boucle while(true).
-# Le backend Tiny-SD CPU utilise des poids publics, sans Inference Providers.
+# Le backend Realistic Vision + LCM utilise des poids publics en local CPU, sans endpoint d'inférence.
 
 on:
   schedule:
@@ -21,7 +21,7 @@ on:
         type: boolean
         default: false
       voice_check_only:
-        description: "Vérifier le endpoint vocal sans installer Tiny-SD ni lancer le Worker"
+        description: "Vérifier le endpoint vocal sans installer les modèles image ni lancer le Worker"
         required: false
         type: boolean
         default: false
@@ -40,12 +40,12 @@ jobs:
     name: Traitement des video_jobs
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    # Le profil strict n'autorise que Tiny-SD CPU sur poids publics.
+    # Profil strict : trois variantes autorisées, exécutées séquentiellement sur CPU.
     env:
-      IMAGE_TEXT_TO_IMAGE_BACKEND: tiny_sd_cpu
-      TINY_SD_CPU_WIDTH: "504"
-      TINY_SD_CPU_HEIGHT: "896"
-      TINY_SD_CPU_STEPS: "25"
+      IMAGE_TEXT_TO_IMAGE_BACKEND: realistic_vision_lcm_cpu
+      RV_LCM_CPU_THREADS: "4"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
       VOICE_PROVIDER: edge-tts
       VOICE_NAME: Rémy Neural
       VOICE_STUDIO_TIMEOUT_MS: "20000"
@@ -63,17 +63,17 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Python 3.12 pour Tiny-SD CPU
+      - name: Python 3.12 pour Realistic Vision LCM CPU
         if: ${{ github.event_name != 'workflow_dispatch' || (inputs.validate_only != true && inputs.voice_check_only != true) }}
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Runtime Tiny-SD CPU (poids publics, aucune API d'inference)
+      - name: Runtime Realistic Vision + LCM CPU (poids publics, aucune API d'inférence)
         if: ${{ github.event_name != 'workflow_dispatch' || (inputs.validate_only != true && inputs.voice_check_only != true) }}
         run: |
           python -m pip install --disable-pip-version-check --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 'torch==2.6.0+cpu'
-          python -m pip install --disable-pip-version-check --no-cache-dir 'diffusers==0.32.2' 'transformers==4.51.3' 'accelerate==1.6.0' 'safetensors'
+          python -m pip install --disable-pip-version-check --no-cache-dir 'diffusers==0.32.2' 'transformers==4.51.3' 'accelerate==1.6.0' 'safetensors' 'peft==0.14.0' 'Pillow'
           python -c "import torch, diffusers, transformers; print('cpu_only=', not torch.cuda.is_available(), 'torch=', torch.__version__, 'diffusers=', diffusers.__version__, 'transformers=', transformers.__version__)"
 
       - name: Installation des dependances (reproductible)
@@ -91,7 +91,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.voice_check_only != true }}
         run: |
           find src scripts netlify tests -type f -name '*.js' -print0 | xargs -0 -n1 node --check
-          python3 -m py_compile scripts/tiny_sd_cpu_generate.py
+          python3 -m py_compile scripts/realistic_vision_lcm_generate.py
           npm test
 
       - name: Preflight des secrets Worker (aucune valeur affichee)
@@ -107,7 +107,7 @@ jobs:
       - name: Etat du backend image selectionne (sortie assainie)
         run: |
           echo "backend=$IMAGE_TEXT_TO_IMAGE_BACKEND"
-          node -e "console.log(JSON.stringify(require('./src/core/imageProviders/tinySdCpuProvider').status()))"
+          node -e "console.log(JSON.stringify(require('./src/core/imageProviders/realisticVisionLcmCpuProvider').status()))"
 
       - name: Sante Voice Studio (externe, sortie assainie)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
@@ -135,11 +135,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          IMAGE_TEXT_TO_IMAGE_BACKEND: tiny_sd_cpu
+          IMAGE_TEXT_TO_IMAGE_BACKEND: realistic_vision_lcm_cpu
           IMAGE_IMG2IMG_PROVIDER: ""
-          TINY_SD_CPU_WIDTH: "504"
-          TINY_SD_CPU_HEIGHT: "896"
-          TINY_SD_CPU_STEPS: "25"
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
           # Les clés de fournisseurs LLM payants ne sont volontairement pas transmises.
           WORKER_JOB_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.job_id || '' }}

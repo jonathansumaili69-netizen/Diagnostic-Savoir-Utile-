@@ -25,7 +25,7 @@ delete process.env.HF_TOKEN;
 delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
 
 const imageProvider = require('../src/core/imageProviders/huggingFaceTextToImageProvider');
-const tinySdCpuProvider = require('../src/core/imageProviders/tinySdCpuProvider');
+const realisticVisionProvider = require('../src/core/imageProviders/realisticVisionLcmCpuProvider');
 const imageProviders = require('../src/core/imageProviders');
 const videoOrchestrator = require('../src/core/videoOrchestrator');
 const qualityCheck = require('../src/core/videoFileQualityCheck');
@@ -134,28 +134,29 @@ test('HF text-to-image: appel provider réel simulé, image PNG originale et has
   }
 });
 
-test('profil strict: Tiny-SD CPU génère sans HF_TOKEN ni fallback payant', async () => {
+test('profil strict: Realistic Vision + LCM CPU est autorisé sans HF_TOKEN ni fallback externe', async () => {
   const oldBackend = process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
   delete process.env.HF_TOKEN;
   delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
   let captured;
   const png = await sharp({ create: { width: 96, height: 96, channels: 3, background: '#d8d0be' } }).png().toBuffer();
-  const restoreGenerator = tinySdCpuProvider.setGenerateForTest(async (params) => {
+  const restoreGenerator = realisticVisionProvider.setGenerateForTest(async (params) => {
     captured = params;
     return {
       buffer: png,
       contentType: 'image/png',
-      provider: 'tiny-sd-cpu',
-      model: 'segmind/tiny-sd',
+      provider: 'realistic-vision-lcm-cpu',
+      model: 'rv4-lcm8',
       asset_type: 'AI_IMAGE_GENERATED',
       width: params.width,
       height: params.height,
       content_sha256: 'a'.repeat(64),
-      generation: { device: 'CPU', reference_image_conditioning: false },
+      provider_attempts: [{ provider: 'rv4-lcm8', ok: true }],
+      generation: { device: 'CPU', scheduler: 'LCMScheduler', steps: 8, reference_image_conditioning: false },
     };
   });
   try {
-    assert.equal(tinySdCpuProvider.status().requires_api_key, false);
+    assert.equal(realisticVisionProvider.status().inference_endpoint, false);
     const asset = await imageProviders.generateAsset({
       scene: { id: 'cpu-scene-1', description: 'Un carnet bleu sur un bureau clair' },
       width: 720,
@@ -163,10 +164,11 @@ test('profil strict: Tiny-SD CPU génère sans HF_TOKEN ni fallback payant', asy
       requireAiGeneration: true,
     });
     assert.equal(captured.scene.id, 'cpu-scene-1');
-    assert.equal(asset.provider, 'tiny-sd-cpu');
-    assert.equal(asset.model, 'segmind/tiny-sd');
+    assert.equal(asset.provider, 'realistic-vision-lcm-cpu');
+    assert.equal(asset.model, 'rv4-lcm8');
     assert.equal(asset.asset_type, 'AI_IMAGE_GENERATED');
-    assert.equal(asset.provider_attempts[0].provider, 'tiny_sd_cpu');
+    assert.equal(asset.provider_attempts[0].provider, 'rv4-lcm8');
+    assert.equal(asset.generation.scheduler, 'LCMScheduler');
     assert.equal(asset.generation.reference_image_conditioning, false);
   } finally {
     restoreGenerator();
@@ -182,7 +184,7 @@ test('profil strict: backend HF non autorisé échoue fermé avant réseau', asy
   try {
     await assert.rejects(
       () => imageProviders.generateAsset({ scene: { id: 'strict-unknown', prompt_final: 'Un bureau moderne' }, width: 720, height: 1280, requireAiGeneration: true }),
-      /Backend strict d’image non autorisé.*tiny_sd_cpu.*aucun provider de repli ne sera appelé/,
+      /Backend strict d’image non autorisé.*realistic_vision_lcm_cpu.*aucun provider de repli ne sera appelé/,
     );
   } finally {
     if (oldBackend === undefined) delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
@@ -213,7 +215,7 @@ test('profil strict: un backend non gratuit échoue sans asset de repli ou faux 
     // Un appel direct strict refuse aussi ce backend avant toute requête réseau.
     await assert.rejects(
       () => imageProviders.generateAsset({ scene: { id: 'strict-no-paid-provider', prompt_final: 'Un bureau moderne' }, width: 720, height: 1280, requireAiGeneration: true }),
-      /Backend strict d’image non autorisé.*tiny_sd_cpu/,
+      /Backend strict d’image non autorisé.*realistic_vision_lcm_cpu/,
     );
   } finally {
     if (oldBackend === undefined) delete process.env.IMAGE_TEXT_TO_IMAGE_BACKEND;
