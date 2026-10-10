@@ -11,6 +11,7 @@ const videoJobs = require('./videoJobs');
 const visualEngine = require('./visualEngine');
 const subtitles = require('./subtitles');
 const videoRenderer = require('./videoRenderer');
+const productEndCard = require('./productEndCard');
 const videoFileQualityCheck = require('./videoFileQualityCheck');
 const mediaStorage = require('./mediaStorage');
 const characterRegistry = require('./characterRegistry');
@@ -439,6 +440,23 @@ async function stepRender(job) {
       image_path: asset.local_path,
     };
   });
+  const endCard = job.manifest && job.manifest.end_card;
+  if (endCard && endCard.enabled === true) {
+    const lastSceneIndex = scenesForRender.length - 1;
+    if (lastSceneIndex < 0) throw new Error('Carte finale demandée sans scène de rendu.');
+    const cardPath = path.join(workDir, 'render', 'official-product-end-card.png');
+    await productEndCard.compose({
+      backgroundPath: scenesForRender[lastSceneIndex].image_path,
+      outputPath: cardPath,
+      width: format.width,
+      height: format.height,
+      title: endCard.product_title || job.manifest.title || 'Décrocher un emploi',
+      brand: endCard.brand || job.manifest.brand || 'Savoir Utile',
+      cta: endCard.cta || 'Découvre le guide',
+    });
+    scenesForRender[lastSceneIndex] = { ...scenesForRender[lastSceneIndex], image_path: cardPath };
+    logger.info('videoOrchestrator: couverture officielle et CTA ajoutées à la scène finale', { job_id: job.id });
+  }
   const outputPath = path.join(workDir, 'output.mp4');
   const renderResult = await videoRenderer.renderManifest({
     scenes: scenesForRender,
