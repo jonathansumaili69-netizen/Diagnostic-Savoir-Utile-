@@ -95,15 +95,15 @@ test('providerAdapter: Hugging Face est SELECTIONNE quand HF_TOKEN est present, 
   }
 });
 
-test('imageProviders: avec Hugging Face configure, character_reference passe EN PREMIER (existing_asset reste en repli)', () => {
+test('imageProviders: avec Hugging Face configure, la référence passe d’abord et le portrait ne sert jamais de fallback de scène', () => {
   process.env.IMAGE_IMG2IMG_PROVIDER = 'huggingface';
   process.env.HF_TOKEN = TOKEN;
   try {
     assert.equal(characterReferenceProvider.isEnabled(), true);
-    assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['character_reference', 'existing_asset', 'graphic_engine']);
-    assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['character_reference', 'existing_asset', 'graphic_engine']);
+    assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['character_reference', 'pollinations', 'graphic_engine']);
+    assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['character_reference', 'pollinations', 'graphic_engine']);
     // Le logo officiel n'est JAMAIS regenere par IA, meme provider configure.
-    assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset', 'graphic_engine']);
+    assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset']);
     const st = imageProviders.referenceProviderStatus();
     assert.equal(st.configure, true);
     assert.equal(st.provider, 'huggingface');
@@ -112,10 +112,10 @@ test('imageProviders: avec Hugging Face configure, character_reference passe EN 
   }
 });
 
-test('imageProviders: sans Hugging Face configure, la chaine reste STRICTEMENT inchangee (zero regression)', () => {
+test('imageProviders: sans Hugging Face configure, un portrait officiel n’est jamais un plan final par défaut', () => {
   clearEnv();
-  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['existing_asset', 'graphic_engine']);
-  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['existing_asset', 'graphic_engine']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['pollinations', 'graphic_engine']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['pollinations', 'graphic_engine']);
 });
 
 test('providerAdapter.generate: route le modele via Hugging Face vers fal-ai avec reference et recupere l image', async () => {
@@ -173,7 +173,7 @@ test('providerAdapter.generate: route le modele via Hugging Face vers fal-ai ave
   }
 });
 
-test('imageProviders.generateAsset: Hugging Face tente en premier puis repli REEL sur existing_asset en cas d echec', async () => {
+test('imageProviders.generateAsset: Hugging Face tente une génération référencée puis fallback sans réutiliser le portrait', async () => {
   process.env.IMAGE_IMG2IMG_PROVIDER = 'huggingface';
   process.env.HF_TOKEN = TOKEN;
   process.env.CHARACTER_REFERENCE_MAX_ATTEMPTS = '1';
@@ -188,10 +188,12 @@ test('imageProviders.generateAsset: Hugging Face tente en premier puis repli REE
   };
   try {
     const asset = await imageProviders.generateAsset({ scene: { personnage: 'Samuel' }, width: 120, height: 200 });
-    assert.equal(asset.asset_type, 'EXISTING_ASSET', 'le repli officiel must prendre le relais');
+    assert.equal(asset.asset_type, 'GENERATED_GRAPHIC', 'le portrait officiel ne doit pas remplacer la scène en fallback');
     const first = asset.provider_attempts[0];
     assert.equal(first.provider, 'character_reference', 'character_reference (Hugging Face) doit avoir ete tente en premier');
     assert.equal(first.ok, false);
+    assert.equal(asset.provider_attempts.at(-1).provider, 'graphic_engine');
+    assert.equal(asset.provider_attempts.at(-1).ok, true);
     assert.ok(hfCalls >= 1, 'le provider Hugging Face doit avoir ete REELLEMENT appele');
   } finally {
     global.fetch = realFetch;

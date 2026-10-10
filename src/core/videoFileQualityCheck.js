@@ -2,6 +2,7 @@
 
 const fs = require('fs/promises');
 const { spawn } = require('child_process');
+const mediaProvenance = require('./mediaProvenance');
 
 /**
  * VIDEO FILE QUALITY CHECK — controle reel du FICHIER MP4 produit par le
@@ -175,6 +176,20 @@ async function check(filePath, { expected = {} } = {}) {
     push('assets_presents', missing <= 0 ? 'pass' : 'fail', missing <= 0
       ? `Les ${expected.expectedSceneCount} scene(s) attendue(s) ont toutes un asset associe.`
       : `${missing} scene(s) sur ${expected.expectedSceneCount} sans asset associe.`);
+  }
+
+  if (Array.isArray(expected.sceneAssets)) {
+    const audit = await mediaProvenance.auditAssetCollection(expected.sceneAssets, { exampleRoot: expected.styleExampleRoot });
+    push('assets_provenance_distincts', audit.ok ? 'pass' : 'fail', audit.ok
+      ? `${audit.assets_checked} asset(s) source audité(s); aucun exemple de style ni quasi-doublon détecté.`
+      : `Audit de provenance refusé (${audit.rejected.length} asset(s) rejeté(s), ${audit.duplicates.length} doublon(s), ${audit.examples_available} exemple(s) indexé(s)).`);
+  }
+
+  if (Array.isArray(expected.renderedSceneFrames)) {
+    const frameAudit = await mediaProvenance.auditRenderedVideo(filePath, expected.renderedSceneFrames, { exampleRoot: expected.styleExampleRoot });
+    push('frames_rendues_sans_exemples', frameAudit.ok ? 'pass' : 'fail', frameAudit.ok
+      ? `${frameAudit.frames_checked} frame(s) du MP4 échantillonnée(s) et comparée(s) aux ${frameAudit.examples_available} exemple(s); aucun match.`
+      : `Audit des frames échoué ou bloqué : ${frameAudit.reason || `${frameAudit.rejected.length} frame(s) correspondante(s); ${frameAudit.examples_available} exemple(s) indexé(s).`}`);
   }
 
   return finalize(checks, { blocked: false, format, videoStream, audioStream, durationSeconds });

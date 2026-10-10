@@ -1,0 +1,93 @@
+{
+  "idea": "Remplacer l’envoi de candidatures au hasard par un chemin de recherche structuré.",
+  "angle": "Un guide pratique qui organise la recherche d’emploi en huit phases; aucune promesse d’embauche.",
+  "hook": "Tu envoies des CV, mais tu ne sais pas ce qui bloque ?",
+  "script": "Tu envoies des CV, mais tu ne sais pas ce qui bloque ? La Méthode 8C t’aide à te connaître et à comprendre le marché. Construis tes outils, puis active les bons canaux. Prépare tes entretiens, sécurise l’offre, adapte la méthode à ton profil. Et continue avec un cadre pensé pour l’Afrique francophone. Découvre « Décrocher un emploi » de Savoir Utile : le lien exact s’affiche.",
+  "platform": "Reels, TikTok et Shorts — vertical 9:16",
+  "target_audience": "Personnes de RDC et d’Afrique francophone qui cherchent un emploi ou souhaitent mieux structurer leurs démarches.",
+  "target_duration_seconds": 30,
+  "cta": "Découvre « Décrocher un emploi » de Savoir Utile : https://savoir-utile.mychariow.shop/prd_s33t0e",
+  "scenes": [
+    {
+      "id": "scene_01-hook",
+      "description": "Accroche : candidatures envoyées sans savoir quoi corriger.",
+      "personnage": "aucun",
+      "decor": "Bureau de travail sobre, dossiers de candidature vierges.",
+      "cadrage": "Plongée rapprochée sur feuilles, enveloppes et stylo; mouvement avant subtil.",
+      "emotion": "Hésitation puis curiosité.",
+      "style": "Réalisme éditorial, bleu nuit, ivoire, touches ocre; lumière latérale naturelle.",
+      "reference_necessaire": "aucune",
+      "logo_requis": false,
+      "prompt_final": "Vertical 9:16 editorial photograph, overhead close-up of several blank unmarked job application papers and a capped pen scattered on a modest African home-office desk, a closed folder partly in frame, natural morning window light, deep navy and warm ivory palette with restrained ochre accent, tactile paper detail, thoughtful but not gloomy, strong readable composition with focal papers in the center, realistic photography, no people, no hands, no readable text, no letters, no logo, no watermark.",
+      "voix_off_scene": "Tu envoies des CV, mais tu ne sais pas ce qui bloque ?"
+    },
+    {
+      "id": "scene_02-connais-comprendre",
+      "description": "La méthode commence par la connaissance de soi puis la compréhension du marché.",
+      "personnage": "aucun",
+      "decor": "Carnet ouvert et carte abstraite sans texte sur un bureau.",
+      "cadrage": "Plan rapproché en légère diagonale, mise au point sur carnet et repères graphiques non lisibles.",
+      "emotion": "Clarté et orientation.",
+      "style": "Réalisme éditorial cohérent, bleu nuit, ivoire et ocre, lumière douce.",
+      "reference_necessaire": "aucune",
+      "logo_requis": false,
+      "prompt_final": "Vertical 9:16 realistic editorial photograph, a clean open notebook with a simple hand-drawn path made only of abstract lines and dots, a small unmarked compass beside it, on a dark navy desk, warm window light falling across the page, close diagonal composition, feeling of self-discovery and direction, ivory paper and restrained ochre accents, African francophone career guide mood, no person, no hands, no readable text, no letters, no logo, no watermark.",
+      "voix_off_scene": "La Méthode 8C t’aide à te connaître et à comprendre le marché."
+    },
+    {
+      "id": "scene_03-construire-contacter",
+      "description": "Construire des outils de candidature puis activer les canaux de contact.",
+      "personnage": "aucun",
+      "decor": "Dossier propre, ordinateur portable fermé et cartes vierges.",
+      "cadrage": "Gros plan frontal légèrement bas, profondeur de champ douce.",
+      "emotion": "Organisation et initiative.",
+      "style": "Réalisme éditorial cohérent, contraste bleu nuit/ivoire, petit accent ocre.",
+      "reference_necessaire": "aucune",
+      "logo_requis": false,
+      "prompt_final": "Vertical 9:16 editorial still photograph, neatly organized blank résumé sheets inside an open folder beside a closed laptop and two blank unmarked contact cards, precise tidy desk arrangement, medium close-up with clear object separation, soft directional daylight, navy blue background, ivory paper and restrained ochre detail, practical and proactive mood, no person, no hands, no readable text on paper or screen, no letters, no logo, no watermark.",
+      "voix_off_scene": "Construis tes outils, puis active les bons canaux."
+    },
+    {
+      "id": "scene_04-convaincre-confirmer",
+      "description": "Préparer les entretiens, sécuriser l’offre et adapter la méthode au profil.",
+      "personnage": "aucun",
+      "decor": "Salle d’entretien calme avec chaise, table et dossier préparé.",
+      "cadrage": "Plan moyen symétrique, regard vers une porte ouverte en arrière-plan.",
+      "emotion": "Préparation et confiance mesurée.",
+      "style": "Réalisme éditorial cohérent, lumière naturelle claire, détail ocre discret.",
+      "reference_necessaire": "aucune",
+      "logo_requis": false,
+      "prompt_final": "Vertical 9:16 realistic editorial photograph of a quiet professional interview room prepared for a meeting, two simple chairs across a small table, a closed blank folder and a glass of water, open doorway in the background with soft daylight, balanced medium-wide framing, calm prepared atmosphere, navy, ivory and subtle ochre palette, no people, no hands, no readable text, no signage, no logo, no watermark.",
+      "voix_off_scene": "Prépare tes entretiens, sécurise l’offre, adapte la méthode à ton profil."
+    },
+    {
+      "id": "scene_05-contextualiser-continuer",
+      "description": "Contextualiser la méthode et poursuivre ses démarches dans la durée.",
+      "personnage": "aucun",
+      "decor": "Espace de travail lumineux ouvrant sur une rue urbaine francophone.",
+      "cadrage": "Plan large vertical depuis l’intérieur vers l’extérieur, mouvement avant doux.",
+      "emotion": "Persévérance et possibilité réaliste.",
+      "style": "Réalisme éditorial cohérent, lumière du matin et palette sobre.",
+      "reference_necessaire": "aucune",
+      "logo_requis": false,
+      "prompt_final": "Vertical 9:16 realistic editorial photograph, a small organized writing desk by an open window overlooking a lively but softly blurred francophone African city street in morning light, a simple calendar with blank pages and a notebook in the foreground, warm natural light, hopeful but grounded mood, wide composition with depth from desk to city, deep navy shadows, ivory and restrained ochre accents, no people visible, no readable writing, no logos, no watermark.",
+      "voix_off_scene": "Et continue avec un cadre pensé pour l’Afrique francophone."
+    },
+    {
+      "id": "scene_06-guide-cta",
+      "description": "Présentation du guide officiel et appel à consulter l’adresse exacte.",
+      "personnage": "aucun",
+      "decor": "Couverture officielle du guide du dépôt.",
+      "cadrage": "Plan produit vertical plein écran avec zoom lent et carton CTA distinct en haut.",
+      "emotion": "Invitation claire, sans urgence artificielle.",
+      "style": "Asset officiel du produit; aucun remplacement ou fausse couverture.",
+      "reference_necessaire": "assets/products/guide-methode-8c-officiel.png",
+      "logo_requis": false,
+      "official_asset_id": "guide_8c_cover",
+      "cta_label": "DÉCOUVRE LE GUIDE",
+      "cta_url": "https://savoir-utile.mychariow.shop/prd_s33t0e",
+      "prompt_final": "Use the official product cover as supplied; no generated cover, no altered title, no extra text in the image.",
+      "voix_off_scene": "Découvre « Décrocher un emploi » de Savoir Utile : le lien exact s’affiche."
+    }
+  ]
+}

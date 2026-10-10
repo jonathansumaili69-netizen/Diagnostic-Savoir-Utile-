@@ -83,6 +83,34 @@ test('videoRenderer.renderManifest: brule des sous-titres reels quand un .srt es
   assert.equal(check.ok, true);
 });
 
+test('videoRenderer.buildTextOverlaySrt: conserve le CTA exact avec un timing valide', () => {
+  const url = 'https://savoir-utile.mychariow.shop/prd_s33t0e';
+  const srt = videoRenderer.buildTextOverlaySrt([{
+    text: `DÉCOUVRE LE GUIDE\n${url}`,
+    start_seconds: 27.25,
+    end_seconds: 30,
+  }]);
+  assert.match(srt, /00:00:27,250 --> 00:00:30,000/);
+  assert.ok(srt.includes('DÉCOUVRE LE GUIDE'));
+  assert.ok(srt.includes(url));
+  assert.throws(() => videoRenderer.buildTextOverlaySrt([{ text: 'x', start_seconds: 2, end_seconds: 1 }]), /texte superposé invalide/);
+});
+
+test('videoRenderer.renderManifest: brûle séparément le CTA visuel du sous-titre parlé', async () => {
+  const outputPath = path.join(tmpDir, 'out-cta-overlay.mp4');
+  const result = await videoRenderer.renderManifest({
+    scenes: [{ scene_id: 's1', duration_seconds: 2, image_path: path.join(tmpDir, 'scene1.png') }],
+    textOverlays: [{ text: 'DÉCOUVRE LE GUIDE\nhttps://savoir-utile.mychariow.shop/prd_s33t0e', start_seconds: 0.25, end_seconds: 2 }],
+    width: 320, height: 568,
+    outputPath,
+    workDir: path.join(tmpDir, 'work-cta-overlay'),
+  });
+  assert.equal(result.textOverlaysBurned, true);
+  assert.ok(fs.existsSync(outputPath));
+  const check = await qc.check(outputPath);
+  assert.equal(check.ok, true, JSON.stringify(check.checks.filter((c) => c.status !== 'pass')));
+});
+
 test('videoRenderer.renderManifest: refuse une scene sans image (n invente jamais un visuel)', async () => {
   await assert.rejects(
     () => videoRenderer.renderManifest({

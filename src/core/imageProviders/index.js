@@ -8,6 +8,7 @@ const characterReferenceProvider = require('./characterReferenceProvider');
 const huggingFaceTextToImageProvider = require('./huggingFaceTextToImageProvider');
 const tinySdCpuProvider = require('./tinySdCpuProvider');
 const realisticVisionLcmCpuProvider = require('./realisticVisionLcmCpuProvider');
+const mediaProvenance = require('../mediaProvenance');
 
 /**
  * REGISTRE DES PROVIDERS D'IMAGE (architecture provider-agnostic demandee) :
@@ -23,12 +24,10 @@ const realisticVisionLcmCpuProvider = require('./realisticVisionLcmCpuProvider')
  * binaire ne doit jamais transiter par le cache JSON (voir la note dans
  * assetCache.js).
  *
- * AJOUT (sections 3-6 du prompt maitre) : `character_reference` est un
- * provider OPTIONNEL de generation conditionnee par les references officielles
- * du personnage. Il n'est JAMAIS requis : s'il n'est pas configure
- * (IMAGE_IMG2IMG_PROVIDER absent), l'ordre de repli reste STRICTEMENT celui
- * d'avant (existing_asset -> graphic_engine), ce qui garantit zero regression
- * pour les scenes Samuel / Marc / logo.
+ * Les portraits officiels sont des references d'identite, jamais des plans de
+ * production par defaut. Sans img2img conditionne, Samuel/Marc passent a une
+ * image neuve (ou Graphic Engine si le provider echoue) et leur identite est
+ * marquee a verifier; un portrait final n'est permis que par opt-in explicite.
  */
 const PROVIDERS = Object.freeze({
   character_reference: characterReferenceProvider,
@@ -41,30 +40,17 @@ const PROVIDERS = Object.freeze({
 });
 
 /**
- * Ordre de repli reel utilise : privilegie TOUJOURS la reference officielle
- * bundlee (existing_asset) pour Samuel/Marc/logo — la continuite visuelle
- * (voir visualContinuity.js) est jugee plus importante que la nouveaute,
- * puisqu'une generation IA texte->image sans conditionnement par image de
- * reference ne peut pas garantir qu'un personnage "ressemble" a la scene
- * precedente. Pour tout le reste, tente d'abord une image IA specifique au
- * prompt (pollinations), et retombe toujours, en dernier recours, sur le
- * Graphic Engine (aucune dependance externe, ne peut pas echouer pour des
- * raisons reseau/quota).
- *
- * EXTENSION (non regressive) : pour une scene a personnage officiel, si un
- * provider image-to-image est REELLEMENT configure (cle API presente), la
- * generation conditionnee par reference officielle est tentee EN PREMIER ;
- * `existing_asset` reste le repli immediat (identite exacte, mise en scene
- * figee) — jamais un personnage generique.
+ * Un logo ou un asset produit n'est servi que si la scene le demande
+ * explicitement. Un portrait officiel ne se substitue jamais en silence a une
+ * scene. Sans image-to-image, le moteur cree un visuel neuf, puis expose
+ * honnetement que la ressemblance de Samuel/Marc doit etre verifiee.
  */
 function buildProviderOrder(scene = {}) {
-  const needsOfficialReference = scene.logo_requis === true
-    || /samuel|marc/i.test(String(scene.personnage || ''));
-  if (needsOfficialReference) {
-    if (scene.logo_requis !== true && characterReferenceProvider.isEnabled()) {
-      return ['character_reference', 'existing_asset', 'graphic_engine'];
-    }
-    return ['existing_asset', 'graphic_engine'];
+  if (scene.logo_requis === true || scene.official_asset_id) return ['existing_asset'];
+  const hasOfficialCharacter = /samuel|marc/i.test(String(scene.personnage || scene.character_id || ''));
+  if (hasOfficialCharacter && scene.allow_official_reference_frame === true) return ['existing_asset'];
+  if (hasOfficialCharacter && characterReferenceProvider.isEnabled()) {
+    return ['character_reference', 'pollinations', 'graphic_engine'];
   }
   return ['pollinations', 'graphic_engine'];
 }
@@ -86,12 +72,21 @@ async function runChain(order, params) {
     try {
       // eslint-disable-next-line no-await-in-loop
       const asset = await provider.generate(params);
+      // Refuse chaque resultat avant qu'il puisse entrer dans le cache ou le rendu.
+      // Le chemin de repli continue alors vers un provider autorise.
+      // eslint-disable-next-line no-await-in-loop
+      const provenance = await mediaProvenance.inspectAsset({ asset, scene: params.scene });
+      if (!provenance.ok) {
+        const error = new Error(`Asset ${providerId} rejete par le controle de provenance: ${provenance.failures.join('; ')}`);
+        error.code = 'MEDIA_PROVENANCE_REJECTED';
+        throw error;
+      }
       attempts.push({ provider: providerId, ok: true, duration_ms: Date.now() - startedAt });
       if (providerId === 'existing_asset') {
         logger.info('EXISTING_ASSET', { asset_type: asset.asset_type || 'EXISTING_ASSET' });
       } else if (attempts.some((attempt) => attempt.ok === false)) {
         logger.warn('FALLBACK', { provider: providerId, asset_type: asset.asset_type || null });
-      } else if (asset.asset_type === 'AI_IMAGE' || asset.asset_type === 'AI_IMAGE_REFERENCED') {
+      } else if (['AI_IMAGE', 'AI_IMAGE_REFERENCED', 'AI_IMAGE_GENERATED'].includes(asset.asset_type)) {
         logger.info('AI_IMAGE_GENERATED', { provider: providerId, model: asset.model || null, asset_type: asset.asset_type });
       }
       return { asset, attempts };
@@ -118,6 +113,9 @@ async function runChain(order, params) {
  * visualEngine.js pour l'orchestration complete (cache + stockage durable).
  */
 async function generateAsset({ scene = {}, width, height, mode, seed, requireAiGeneration = false } = {}) {
+  if ((scene.logo_requis === true || scene.official_asset_id || scene.allow_official_reference_frame === true) && requireAiGeneration) {
+    throw new Error('Le profil strict refuse les assets officiels comme plans; seuls des visuels de scène générés sont autorisés.');
+  }
   if (requireAiGeneration) {
     const backendId = String(process.env.IMAGE_TEXT_TO_IMAGE_BACKEND || 'realistic_vision_lcm_cpu').trim().toLowerCase();
     const strictProviders = {
@@ -126,7 +124,16 @@ async function generateAsset({ scene = {}, width, height, mode, seed, requireAiG
     const provider = strictProviders[backendId];
     if (!provider) throw new Error(`Backend strict d’image non autorisé : "${backendId}". Seul "realistic_vision_lcm_cpu" est autorisé; aucun provider de repli ne sera appelé.`);
     const asset = await provider.generate({ scene, width, height, seed });
+    const provenance = await mediaProvenance.inspectAsset({ asset, scene });
+    if (!provenance.ok) throw new Error(`Asset du backend strict refuse par mediaProvenance: ${provenance.failures.join('; ')}`);
     return { ...asset, provider_attempts: asset.provider_attempts || [{ provider: backendId, ok: true, model: asset.model }] };
+  }
+  const selectedBackend = String(process.env.IMAGE_TEXT_TO_IMAGE_BACKEND || '').trim().toLowerCase();
+  if (selectedBackend === 'realistic_vision_lcm_cpu' && !scene.logo_requis && !scene.official_asset_id && !scene.allow_official_reference_frame) {
+    const asset = await realisticVisionLcmCpuProvider.generate({ scene, width, height, seed });
+    const provenance = await mediaProvenance.inspectAsset({ asset, scene });
+    if (!provenance.ok) throw new Error(`Asset CPU refuse par mediaProvenance: ${provenance.failures.join('; ')}`);
+    return { ...asset, provider_attempts: asset.provider_attempts || [{ provider: selectedBackend, ok: true, model: asset.model }] };
   }
   const order = buildProviderOrder(scene);
   const { asset, attempts } = await runChain(order, { scene, width, height, mode, seed });
@@ -138,7 +145,7 @@ function referenceProviderStatus() {
   return characterReferenceProvider.isEnabled() ? require('./providerAdapter').status() : {
     configure: false,
     provider: null,
-    raison: "Aucun provider image-to-image configure : les scenes a personnage officiel utilisent l'asset officiel tel quel.",
+    raison: "Aucun provider image-to-image configure : un visuel neuf est produit; la ressemblance de Samuel/Marc n'est pas garantie et doit etre revue.",
   };
 }
 

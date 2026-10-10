@@ -2,6 +2,7 @@
 
 const { askAI } = require('./base');
 const visualContinuity = require('../core/visualContinuity');
+const scenePlanner = require('../core/scenePlanner');
 
 const SYSTEM = [
   "Tu es AGENT_CONTENU au sein de Conquistador OS, specialise dans la creation de",
@@ -91,12 +92,15 @@ async function scenes(input) {
 
 async function fullVideo(input) {
   const strictProduction = input.production_profile === 'strict_multiscene';
+  const targetDuration = Number(input.target_duration_seconds) || 60;
+  const initialPlan = scenePlanner.planSceneCount({ targetDurationSeconds: targetDuration, minScenes: strictProduction ? 6 : 4, maxScenes: 12 });
   const strictGuidance = strictProduction ? [
-    `PROFIL DE PRODUCTION STRICT : vise ${Number(input.target_duration_seconds) || 60} secondes, cible acceptable de 45 à 90 secondes après mesure de la voix réelle.`,
-    'Produis exactement 8 scènes numérotées, chacune avec un id distinct, un prompt_final inédit et une narration voix_off_scene originale de 17 à 24 mots.',
-    'Le script total doit rester dense, oral et utile (environ 145 à 175 mots) : hook dès la première phrase, développement de plusieurs conseils concrets, transitions courtes, conclusion et CTA explicite dans la dernière scène.',
+    `PROFIL DE PRODUCTION STRICT : vise ${targetDuration} secondes, cible acceptable de 45 à 90 secondes après mesure de la voix réelle.`,
+    `La durée seule donne un point de départ d’environ ${initialPlan.recommended_scene_count} plans (estimation ${initialPlan.rationale}); recalcule ce nombre après rédaction du script, selon les unités narratives et les changements visuels réellement utiles.`,
+    'Produis entre 6 et 12 scènes, jamais un nombre fixe par habitude. Chaque scène a un id distinct, un prompt_final inédit et une narration originale dimensionnée pour sa durée réelle. Fusionne les idées qui tiennent dans un plan; ne scinde que lorsqu’une transition d’information ou d’action le justifie.',
+    'Le script doit rester oral et utile à environ 2,2 mots par seconde de narration : hook immédiat, étapes concrètes, transitions naturelles, conclusion et CTA explicite dans la dernière scène. Après rédaction, compare la durée parlée estimée au nombre de plans et élimine tout remplissage.',
     "Format faceless : n'inclus pas Samuel, Marc, aucun personnage identifiable ni visage ; raconte avec des décors, objets et gestes non identifiants. Chaque visuel doit illustrer le texte précis de sa scène.",
-    'Garde une direction artistique cohérente pour les 8 scènes (palette bleu nuit, ivoire et touches ocre, lumière naturelle, réalisme éditorial), mais varie clairement le décor, le cadrage et les objets. Aucun texte lisible ni logo inventé dans les images.',
+    'Garde une direction artistique cohérente (palette bleu nuit, ivoire et touches ocre, lumière naturelle, réalisme éditorial), mais varie clairement le décor, le cadrage et les objets. Aucun texte lisible ni logo inventé dans les images.',
     'Ne produis pas de manifeste générique, de prompt répété, de scène décorative ou de remplissage.',
   ].join('\n') : '';
   const prompt = [
@@ -106,6 +110,7 @@ async function fullVideo(input) {
     SCENE_DECOUPAGE_GUIDANCE,
     strictGuidance,
     'voix_off_scene = texte exact, pret a etre lu tel quel par la voix off pour cette scene precise (pas une indication de ton).',
+    'N’invente aucune promesse d’emploi garanti, aucun salaire, statistique, témoignage, prix, remboursement ou délai qui ne figure pas dans les sources fournies.',
     'texte_ecran (liste de textes courts affiches a l\'ecran), voix_off (indication de ton, le',
     'fournisseur/voix technique est deja fixe et ne doit pas etre invente), cta, description,',
     'hashtags (liste), idee_miniature, plateforme cible, style de marque et transitions.',

@@ -15,6 +15,8 @@ const videoFileQualityCheck = require('./videoFileQualityCheck');
 const mediaStorage = require('./mediaStorage');
 const characterRegistry = require('./characterRegistry');
 const videoTimeline = require('./videoTimeline');
+const scenePlanner = require('./scenePlanner');
+const localVoice = require('./localVoice');
 const { logger } = require('./logger');
 const contenu = require('../agents/contenu');
 const voiceOver = require('../agents/voiceOver');
@@ -137,6 +139,18 @@ function resolveCharacters(scenes = []) {
 /** QUEUED -> PREPARING : idee/script/scenes/manifest. Reutilise src/agents/contenu.js (fullVideo) tel quel ; n'invente rien s'il echoue. */
 async function stepPrepare(job) {
   const strict = isStrictMultiscene(job);
+  const attachScenePlanning = (manifest) => {
+    const scenes = Array.isArray(manifest && manifest.scenes) ? manifest.scenes : [];
+    const narration = scenes.map((scene) => String(scene.voix_off_scene || scene.narration || '')).join(' ');
+    return {
+      ...manifest,
+      scene_planning: scenePlanner.assessSceneCount({
+        script: narration,
+        targetDurationSeconds: Number(job.input && job.input.target_duration_seconds) || null,
+        actualSceneCount: scenes.length,
+      }),
+    };
+  };
   const validateManifest = (manifest) => {
     const scenes = Array.isArray(manifest && manifest.scenes) ? manifest.scenes : [];
     if (strict && (scenes.length < 6 || scenes.length > 12)) {
@@ -169,7 +183,7 @@ async function stepPrepare(job) {
     validateManifest(manifest);
     const characters = resolveCharacters(manifest.scenes);
     if (strict && characters.bloquants.length) throw new Error(characters.bloquants.map((item) => item.detail).join(' '));
-    return { manifest: { ...manifest, source: 'fourni_par_utilisateur' }, characters };
+    return { manifest: { ...attachScenePlanning(manifest), source: 'fourni_par_utilisateur' }, characters };
   }
   const sujet = job.input && job.input.sujet;
   if (!sujet) {
@@ -192,7 +206,7 @@ async function stepPrepare(job) {
   if (strict && characters.bloquants.length) throw new Error(characters.bloquants.map((item) => item.detail).join(' '));
   return {
     manifest: {
-      ...output,
+      ...attachScenePlanning(output),
       source: 'genere_ia',
       provider: result.provider,
       model: result.model,
@@ -222,7 +236,7 @@ async function stepAssets(job) {
     mode: job.mode_at_creation,
     workDir: path.join(jobWorkDir(job.id), 'assets'),
     requireAiGeneration: strict,
-    useCache: !strict,
+    useCache: !strict && !(job.input && job.input.local_preview === true),
   });
   if (strict) {
     const failed = report.scenes.filter((scene) => !scene.ok || !['AI_IMAGE_GENERATED', 'AI_IMAGE_REFERENCED'].includes(scene.asset_type) || !scene.storage_url || !scene.content_sha256);
@@ -230,6 +244,13 @@ async function stepAssets(job) {
       const causes = failed.map((scene) => `${scene.scene_id || 'scene'}: ${scene.erreur || 'asset IA, stockage ou hash invalide'}`).slice(0, 4).join(' | ');
       throw new Error(`Assets stricts invalides : ${report.reussis}/${report.total} réussis; ${failed.length} asset(s) non généré(s) IA, non distinct(s) ou non stocké(s) durablement. ${causes}`);
     }
+  }
+  if (!report.provenance_audit || report.provenance_audit.ok !== true) {
+    throw new Error(`Audit de provenance des images refusé : ${report.provenance_audit ? `${report.provenance_audit.rejected.length} asset(s) rejeté(s), ${report.provenance_audit.duplicates.length} doublon(s)` : 'rapport absent'}.`);
+  }
+  if (report.reussis !== report.total) {
+    const errors = report.scenes.filter((scene) => !scene.ok).map((scene) => `${scene.scene_id}: ${scene.erreur}`).slice(0, 4).join(' | ');
+    throw new Error(`Assets manquants : ${report.reussis}/${report.total} scènes prêtes; le rendu est arrêté plutôt que de réutiliser un exemple ou de laisser une scène vide. ${errors}`);
   }
   if (report.reussis === 0) {
     throw new Error(`Aucune des ${report.total} scene(s) n'a pu obtenir d'asset visuel (tous les providers ont echoue pour chacune) — voir assets.scenes pour le detail par scene.`);
@@ -241,13 +262,25 @@ async function stepAssets(job) {
 async function stepVoice(job) {
   const strict = isStrictMultiscene(job);
   let voice;
-  try {
-    voice = await voiceOver.generateForContent(job.manifest, {});
-  } catch (err) {
-    voice = { configured: false, raison: err.message, tracks: [] };
+  const localTracksSupplied = Array.isArray(job.input && job.input.local_voice_tracks);
+  if (localTracksSupplied && !(job.input && job.input.local_preview === true)) {
+    throw new Error('Les pistes audio locales sont acceptées uniquement avec local_preview=true; aucun contournement du service vocal de production.');
+  }
+  if (localTracksSupplied) {
+    voice = await localVoice.loadTracks(
+      (job.manifest && job.manifest.scenes) || [],
+      job.input.local_voice_tracks,
+      { allowedRoot: process.env.CONQUISTADOR_LOCAL_AUDIO_ROOT },
+    );
+  } else {
+    try {
+      voice = await voiceOver.generateForContent(job.manifest, {});
+    } catch (err) {
+      voice = { configured: false, raison: err.message, tracks: [] };
+    }
   }
   const tracks = Array.isArray(voice.tracks) ? voice.tracks : [];
-  const hasReadyTrack = tracks.some((t) => t.audio_url);
+  const hasReadyTrack = tracks.some((t) => t.audio_url || t.local_path);
   const statutVoix = voice.configured === false
     ? 'VOICE_UNAVAILABLE'
     : (hasReadyTrack ? 'VOICE_READY' : 'VOICE_FAILED');
@@ -290,8 +323,17 @@ async function stepCompose(job) {
   const audioSegments = {};
   const downloadIssues = [];
   for (const track of tracks) {
-    if (!track.audio_url) continue;
     try {
+      if (track.local_path) {
+        const sourcePath = path.resolve(track.local_path);
+        const extension = path.extname(sourcePath).toLowerCase() || '.mp3';
+        const localPath = path.join(audioDir, `${sanitizeId(track.scene_id)}${extension}`);
+        // eslint-disable-next-line no-await-in-loop
+        await fs.copyFile(sourcePath, localPath);
+        audioSegments[track.scene_id] = localPath;
+        continue;
+      }
+      if (!track.audio_url) continue;
       // eslint-disable-next-line no-await-in-loop
       const response = await fetch(track.audio_url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -439,11 +481,33 @@ async function stepRender(job) {
       image_path: asset.local_path,
     };
   });
+  const sceneById = new Map(((job.manifest && job.manifest.scenes) || []).map((scene, index) => [
+    String(scene.id || scene.scene_id || `scene_${index + 1}`), scene,
+  ]));
+  const textOverlays = timeline.flatMap((segment) => {
+    const scene = sceneById.get(String(segment.scene_id));
+    if (!scene || !scene.cta_url) return [];
+    let url;
+    try { url = new URL(String(scene.cta_url)); } catch { throw new Error(`CTA invalide dans la scène ${segment.scene_id} : URL HTTPS absolue requise.`); }
+    if (url.protocol !== 'https:' || url.username || url.password || url.hash) {
+      throw new Error(`CTA refusé dans la scène ${segment.scene_id} : URL HTTPS sans identifiants ni fragment requise.`);
+    }
+    const duration = Number(segment.end_seconds) - Number(segment.start_seconds);
+    const end = Number(segment.end_seconds);
+    const start = Math.max(Number(segment.start_seconds), end - Math.min(5, Math.max(1.5, duration)));
+    return [{
+      scene_id: String(segment.scene_id),
+      text: `${String(scene.cta_label || 'DÉCOUVRE LE GUIDE').trim()}\n${url.href}`,
+      start_seconds: start,
+      end_seconds: end,
+    }];
+  });
   const outputPath = path.join(workDir, 'output.mp4');
   const renderResult = await videoRenderer.renderManifest({
     scenes: scenesForRender,
     audioSegments: (job.compose && job.compose.audio_segments) || {},
     subtitlesSrtPath: job.subtitles && job.subtitles.local_path ? job.subtitles.local_path : null,
+    textOverlays,
     width: format.width,
     height: format.height,
     fps: Number(process.env.VIDEO_FPS) || 30,
@@ -458,6 +522,12 @@ async function stepQualityCheck(job) {
   const strict = isStrictMultiscene(job);
   const format = job.format || (strict ? { width: 720, height: 1280 } : { width: 1080, height: 1920 });
   const generatedAssets = ((job.assets && job.assets.scenes) || []).filter((scene) => scene.ok);
+  const renderedSceneFrames = job.timeline && Array.isArray(job.timeline.scenes)
+    ? job.timeline.scenes.map((scene) => ({
+      scene_id: scene.scene_id,
+      time_seconds: (Number(scene.start_seconds) + Number(scene.end_seconds)) / 2,
+    }))
+    : [];
   const result = await videoFileQualityCheck.check(job.render.outputPath, {
     expected: {
       width: format.width,
@@ -466,6 +536,8 @@ async function stepQualityCheck(job) {
       minDurationSeconds: job.render.durationSeconds,
       expectedSceneCount: job.render.sceneCount,
       assetsUsed: generatedAssets,
+      sceneAssets: generatedAssets,
+      ...(renderedSceneFrames.length ? { renderedSceneFrames } : {}),
       ...(strict ? {
         requireMp4Container: true,
         requireH264: true,
@@ -486,6 +558,16 @@ async function stepQualityCheck(job) {
 
   const characterQc = (job.assets && job.assets.personnages_officiels) || null;
   const scenesAverifier = (characterQc && characterQc.scenes_a_verifier) || [];
+  const scenePlanning = (job.manifest && job.manifest.scene_planning) || null;
+  const ctaScenes = ((job.manifest && job.manifest.scenes) || []).filter((scene) => Boolean(scene.cta_url));
+  const ctaOverlayOk = ctaScenes.length === 0 || Boolean(job.render && job.render.textOverlaysBurned);
+  const ctaOverlayCheck = ctaScenes.length ? [{
+    id: 'cta_url_exact_affiche',
+    status: ctaOverlayOk ? 'pass' : 'fail',
+    detail: ctaOverlayOk
+      ? `${ctaScenes.length} CTA(s) explicite(s) incorporé(s) au MP4 comme calque distinct.`
+      : 'Une scène déclare une URL CTA mais aucun calque CTA visible n’est attesté par le renderer.',
+  }] : [];
 
   // Verdict global : le fichier ET la timeline ET la synchronisation doivent
   // etre conformes. Un visuel de personnage officiel genere et non conforme
@@ -514,13 +596,18 @@ async function stepQualityCheck(job) {
     status: strictVoiceOk ? 'pass' : 'fail',
     detail: strictVoiceOk ? 'Voix Rémy Neural complète, sans plage silencieuse anormale détectée.' : 'Voix manquante, partielle, silencieuse ou issue d’un fallback.',
   }] : [];
-  const ok = result.ok === true && timelineValidation.ok !== false && syncValidation.ok !== false && strictAssetsOk && strictRenderOk && strictVoiceOk;
+  const scenePlanningCheck = scenePlanning ? [{
+    id: 'scene_count_vs_duration_script',
+    status: scenePlanning.status === 'pass' ? 'pass' : 'warn',
+    detail: `Plans réels: ${scenePlanning.actual_scene_count}; recommandation issue du script/durée: ${scenePlanning.recommended_scene_count}; ${scenePlanning.rationale}`,
+  }] : [];
+  const ok = result.ok === true && timelineValidation.ok !== false && syncValidation.ok !== false && strictAssetsOk && strictRenderOk && strictVoiceOk && ctaOverlayOk;
   const needsReview = scenesAverifier.length > 0;
 
   return {
     quality_check: {
       ...result,
-      checks: [...(result.checks || []), ...strictAssetCheck],
+      checks: [...(result.checks || []), ...strictAssetCheck, ...scenePlanningCheck, ...ctaOverlayCheck],
       ok,
       timeline: timelineValidation,
       synchronisation: syncValidation,
@@ -532,6 +619,7 @@ async function stepQualityCheck(job) {
       production_profile: strict ? 'strict_multiscene' : null,
       generated_asset_count: generatedAssets.length,
       distinct_generated_asset_count: new Set(generatedAssets.map((asset) => asset.content_sha256).filter(Boolean)).size,
+      scene_planning: scenePlanning,
     },
   };
 }

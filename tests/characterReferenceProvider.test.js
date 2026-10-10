@@ -94,21 +94,21 @@ test('characterReferenceProvider: strategie declarable sans provider (repli offi
   assert.equal(characterReferenceProvider.isEnabled(), false);
 });
 
-test('imageProviders: la chaine de repli reste STRICTEMENT inchangee sans provider image-to-image (zero regression)', () => {
-  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['existing_asset', 'graphic_engine']);
-  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['existing_asset', 'graphic_engine']);
-  assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset', 'graphic_engine']);
+test('imageProviders: sans provider image-to-image, un portrait officiel ne devient jamais un plan final par fallback', () => {
+  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['pollinations', 'graphic_engine']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['pollinations', 'graphic_engine']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset']);
   assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'aucun' }), ['pollinations', 'graphic_engine']);
 });
 
-test('imageProviders: avec un provider image-to-image reellement configure, la generation conditionnee passe EN PREMIER (existing_asset reste en repli)', () => {
+test('imageProviders: avec un provider image-to-image configure, la reference conditionne une image neuve sans portrait de secours', () => {
   process.env.IMAGE_IMG2IMG_PROVIDER = 'fal';
   process.env.FAL_API_KEY = 'cle-de-test-non-secrete';
   try {
     assert.equal(characterReferenceProvider.isEnabled(), true);
-    assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['character_reference', 'existing_asset', 'graphic_engine']);
+    assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['character_reference', 'pollinations', 'graphic_engine']);
     // Le logo officiel n'est JAMAIS regenere par IA, meme provider configure.
-    assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset', 'graphic_engine']);
+    assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset']);
     const st = imageProviders.referenceProviderStatus();
     assert.equal(st.configure, true);
   } finally {

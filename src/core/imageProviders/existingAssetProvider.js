@@ -29,10 +29,12 @@ const ASSET_MAP = Object.freeze({
   samuel: path.join(ASSETS_ROOT, 'personnages', 'samuel', 'samuel-reference-principale.jpeg'),
   marc: path.join(ASSETS_ROOT, 'personnages', 'marc', 'marc-reference-principale.jpg'),
   samuel_et_marc: path.join(ASSETS_ROOT, 'personnages', 'samuel-et-marc-ensemble.jpg'),
+  guide_8c_cover: path.join(ASSETS_ROOT, 'products', 'guide-methode-8c-officiel.png'),
 });
 
 /** Renvoie { key, path } si cette scene correspond a une reference officielle bundlee, sinon null (provider non applicable). */
 function resolveAsset(scene = {}) {
+  if (scene.official_asset_id === 'guide_8c_cover') return { key: 'guide_8c_cover', path: ASSET_MAP.guide_8c_cover };
   if (scene.logo_requis === true) return { key: 'logo', path: ASSET_MAP.logo };
   const personnage = String(scene.personnage || '').toLowerCase();
   const hasSamuel = personnage.includes('samuel');
@@ -58,10 +60,14 @@ async function generate({ scene = {}, width, height } = {}) {
   }
   const targetWidth = Number(width) > 0 ? Math.round(Number(width)) : 1080;
   const targetHeight = Number(height) > 0 ? Math.round(Number(height)) : 1920;
+  const isCover = resolved.key === 'guide_8c_cover';
   const buffer = await sharp(resolved.path)
-    .resize(targetWidth, targetHeight, { fit: 'cover', position: 'attention' })
+    .resize(targetWidth, targetHeight, isCover
+      ? { fit: 'contain', background: '#ffffff' }
+      : { fit: 'cover', position: 'attention' })
     .png()
     .toBuffer();
+  const assetType = isCover ? 'OFFICIAL_PRODUCT_COVER' : (resolved.key === 'logo' ? 'OFFICIAL_LOGO' : 'EXISTING_ASSET');
   return {
     buffer,
     contentType: 'image/png',
@@ -69,9 +75,14 @@ async function generate({ scene = {}, width, height } = {}) {
     height: targetHeight,
     provider: id,
     model: `existing_asset:${resolved.key}`,
-    asset_type: 'EXISTING_ASSET',
+    asset_type: assetType,
     source_path: resolved.path,
     source_size_bytes: sourceStat.size,
+    provenance: {
+      category: isCover ? 'OFFICIAL_PRODUCT_COVER' : (resolved.key === 'logo' ? 'OFFICIAL_LOGO' : 'OFFICIAL_CHARACTER_REFERENCE'),
+      source_path: resolved.path,
+      usage: isCover ? 'product_proof_explicit_scene' : (resolved.key === 'logo' ? 'brand_asset_explicit_scene' : 'identity_reference_only'),
+    },
   };
 }
 

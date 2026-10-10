@@ -21,9 +21,27 @@ assets/
 │   └── samuel-et-marc-ensemble.jpg            <- reference de continuite entre les 2 personnages
 ├── logo/
 │   └── logo-savoir-utile-officiel.jpeg        <- lockup icone + wordmark "SAVOIR UTILE"
-└── style-reference/                            <- exemples de posts finis (ton, ambiance,
-                                                    mise en page) pour la coherence de style
+├── products/
+│   └── guide-methode-8c-officiel.png           <- couverture officielle extraite du guide fourni
+└── style-reference/                            <- exemples de style : interdits comme plans finaux
+    ├── exemple-01-chambre-inquiet.png          <- fichier source, actuellement tronque/corrompu
+    └── reference-index.json                    <- hashes SHA-256 et pHash des exemples a exclure
 ```
+
+## Exclusion obligatoire des exemples
+
+Le dossier `style-reference/` n'est pas une source de scènes. Le fichier
+`reference-index.json` contient également les empreintes des huit images
+issues du job vidéo incomplet `56059bc2` dans Supabase, notamment la scène
+`s08-suivi` où apparaît la tasse. Les images binaires de ce job ne sont pas
+embarquées dans le dépôt. `src/core/mediaProvenance.js` compare les nouveaux
+assets et des frames réellement extraites du MP4 aux empreintes enregistrées;
+un match exact ou perceptuel bloque la production.
+
+L'exemple `exemple-01-chambre-inquiet.png` est tronqué : son chemin source est
+donc toujours bloqué, et son index garde le SHA-256 exact ainsi qu'un pHash
+récupéré de la partie visible. Ce pHash partiel est une protection
+complémentaire, pas une preuve visuelle complète.
 
 ## Fiche personnages (transcrite depuis bible-personnages-samuel-marc.jpg)
 
@@ -90,13 +108,15 @@ restent fideles a ces references memes si l'IA ne "voit" pas directement le
 fichier image (les fournisseurs texte utilises ne prennent pas d'image en
 entree dans cette version).
 
-## Limite honnete
+## Limite honnête sur l'identité
 
-Les fournisseurs IA actuellement integres (Gemini texte, Groq, OpenRouter)
-sont utilises ici en mode **texte seul** : ils ne "voient" pas ces images de
-reference, ils recoivent une description textuelle detaillee derivee de ces
-memes references. Pour un pipeline de generation d'image reel (Midjourney,
-Stable Diffusion, DALL-E, ou Gemini en mode vision), ces fichiers sont
-prets a etre fournis comme reference image directe — non branche dans cette
-version (voir section 15 du prompt maitre : preparer les prompts, pas
-generer les images).
+Les références officielles de Samuel et Marc restent des références
+d'identité et ne doivent pas servir de plans finaux par défaut. Le fournisseur
+CPU Realistic Vision + LCM crée des images inédites, mais son contrat actuel
+ne conditionne pas directement l'image sur les pixels de référence : une
+description textuelle ne garantit donc pas une identité stable. Le fournisseur
+Hugging Face peut accepter une image de référence lorsqu'il est explicitement
+configuré; la disponibilité d'un modèle, d'un endpoint gratuit et d'un token
+doit être vérifiée séparément. Pour une vidéo sans conditionnement d'identité
+fiable, préférer un format faceless ou signaler les scènes de personnages à
+réviser humainement plutôt que de promettre une ressemblance.

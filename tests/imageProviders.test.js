@@ -5,11 +5,18 @@ const assert = require('node:assert/strict');
 const imageProviders = require('../src/core/imageProviders');
 const existingAssetProvider = require('../src/core/imageProviders/existingAssetProvider');
 const graphicProvider = require('../src/core/imageProviders/graphicProvider');
+const realFetch = global.fetch;
 
-test('imageProviders.buildProviderOrder: privilegie existing_asset pour Samuel/Marc/logo', () => {
-  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['existing_asset', 'graphic_engine']);
-  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['existing_asset', 'graphic_engine']);
-  assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset', 'graphic_engine']);
+test.before(() => {
+  global.fetch = async () => { throw new Error('Réseau désactivé dans ce test déterministe.'); };
+});
+
+test('imageProviders.buildProviderOrder: les portraits officiels ne deviennent jamais des plans par défaut', () => {
+  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel' }), ['pollinations', 'graphic_engine']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Marc' }), ['pollinations', 'graphic_engine']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ personnage: 'Samuel', allow_official_reference_frame: true }), ['existing_asset']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ logo_requis: true }), ['existing_asset']);
+  assert.deepEqual(imageProviders.buildProviderOrder({ official_asset_id: 'guide_8c_cover' }), ['existing_asset']);
 });
 
 test('imageProviders.buildProviderOrder: tente une image IA d abord pour une scene generique', () => {
@@ -27,6 +34,15 @@ test('existingAssetProvider: resout un fichier bundle reel pour Samuel et le red
   assert.ok(Buffer.isBuffer(asset.buffer) && asset.buffer.length > 0);
 });
 
+test('existingAssetProvider: la couverture du guide exige son identifiant officiel explicite', async () => {
+  assert.equal(existingAssetProvider.resolveAsset({ official_asset_id: 'guide_8c_cover' }).key, 'guide_8c_cover');
+  assert.equal(existingAssetProvider.resolveAsset({}), null);
+  const asset = await existingAssetProvider.generate({ scene: { official_asset_id: 'guide_8c_cover' }, width: 360, height: 640 });
+  assert.equal(asset.asset_type, 'OFFICIAL_PRODUCT_COVER');
+  assert.equal(asset.provenance.category, 'OFFICIAL_PRODUCT_COVER');
+  assert.ok(Buffer.isBuffer(asset.buffer) && asset.buffer.length > 0);
+});
+
 test('existingAssetProvider: non applicable (leve, sans crash) pour une scene sans personnage officiel ni logo', async () => {
   await assert.rejects(
     () => existingAssetProvider.generate({ scene: { personnage: 'inconnu' }, width: 100, height: 100 }),
@@ -40,22 +56,23 @@ test('graphicProvider: genere toujours un asset reel (aucune dependance reseau)'
   assert.ok(Buffer.isBuffer(asset.buffer) && asset.buffer.length > 0);
 });
 
-test('imageProviders.generateAsset: chaine de repli complete — reussit toujours meme sans reseau', async () => {
-  // Scene Samuel : existing_asset doit reussir directement (pas besoin de reseau).
-  const forSamuel = await imageProviders.generateAsset({ scene: { personnage: 'Samuel' }, width: 200, height: 300 });
-  assert.equal(forSamuel.asset_type, 'EXISTING_ASSET');
-  assert.equal(forSamuel.provider_attempts[0].provider, 'existing_asset');
-  assert.equal(forSamuel.provider_attempts[0].ok, true);
+test('imageProviders.generateAsset: référence personnage explicite; aucun portrait final par fallback', async () => {
+  const explicitReference = await imageProviders.generateAsset({ scene: { personnage: 'Samuel', allow_official_reference_frame: true }, width: 200, height: 300 });
+  assert.equal(explicitReference.asset_type, 'EXISTING_ASSET');
 
-  // Scene generique : selon la disponibilite reseau de l'environnement
-  // d'execution, pollinations peut reussir (AI_IMAGE) ou echouer — dans ce
-  // dernier cas (pas de reseau, comme dans ce bac a sable), le repli reel
-  // et fonctionnel sur graphic_engine garantit malgre tout un asset valide,
-  // jamais un succes fictif.
-  const generic = await imageProviders.generateAsset({ scene: { description: 'Astuce carriere' }, width: 200, height: 300 });
-  assert.ok(['AI_IMAGE', 'GENERATED_GRAPHIC'].includes(generic.asset_type));
+  // Sans opt-in, le portrait officiel ne doit pas devenir un plan final.
+  const forSamuel = await imageProviders.generateAsset({ scene: { personnage: 'Samuel' }, width: 200, height: 300 });
+  assert.notEqual(forSamuel.asset_type, 'EXISTING_ASSET');
+
+  // Scene generique : reseau eventuellement indisponible, mais fallback graphique réel.
+  const generic = await imageProviders.generateAsset({ scene: { description: 'Astuce carrière' }, width: 200, height: 300 });
+  assert.ok(['AI_IMAGE', 'AI_IMAGE_GENERATED', 'GENERATED_GRAPHIC'].includes(generic.asset_type));
   assert.ok(Buffer.isBuffer(generic.buffer) && generic.buffer.length > 0);
-  const successfulAttempt = generic.provider_attempts.find((a) => a.ok === true);
-  assert.ok(successfulAttempt, 'au moins une tentative doit reussir');
+  const successfulAttempt = generic.provider_attempts.find((attempt) => attempt.ok === true);
+  assert.ok(successfulAttempt, 'au moins une tentative doit réussir');
   assert.equal(successfulAttempt.provider, generic.provider);
+});
+
+test.after(() => {
+  global.fetch = realFetch;
 });

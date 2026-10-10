@@ -244,6 +244,25 @@ test('ffprobe strict: accepte H.264/AAC MP4 vertical 720×1280 en 30 fps entre 4
   });
 });
 
+test('quality check bloque un exemple comme asset source et comme frame effectivement rendue', async () => {
+  const exampleRoot = path.join(tempRoot, 'two-style-examples');
+  fs.mkdirSync(exampleRoot, { recursive: true });
+  const example = await sharp({ create: { width: 96, height: 160, channels: 3, background: '#b77b39' } }).png().toBuffer();
+  fs.writeFileSync(path.join(exampleRoot, 'example-one.png'), example);
+  const rendered = await withFakeFfprobe(JSON.parse(fakeFfprobeJson()), async (filePath) => qualityCheck.check(filePath, {
+    expected: {
+      styleExampleRoot: exampleRoot,
+      sceneAssets: [{ scene_id: 'scene-reused', asset_type: 'AI_IMAGE_GENERATED', buffer: example }],
+      renderedSceneFrames: [{ scene_id: 'scene-reused', time_seconds: 1, buffer: example }],
+    },
+  }));
+
+  assert.equal(rendered.ok, false);
+  const failures = rendered.checks.filter((check) => check.status === 'fail').map((check) => check.id);
+  assert.ok(failures.includes('assets_provenance_distincts'));
+  assert.ok(failures.includes('frames_rendues_sans_exemples'));
+});
+
 test('ffprobe strict: refuse codec, résolution, cadence et durée hors contrat', async () => {
   const bad = JSON.parse(fakeFfprobeJson({ duration: '40', codec: 'hevc', audioCodec: 'opus', width: 480, height: 854, fps: '25/1' }));
   await withFakeFfprobe(bad, async (filePath) => {

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "source": "audit en lecture seule de l’exemple du dépôt et des assets d’un ancien job Conquistador incomplet",
+  "examples": [
+    {
+      "id": "exemple-01-chambre-inquiet",
+      "sha256": "b0008faf1f0a7b70a08a81f0f329217bb9d3755601d36ab6873aabe3681b7f47",
+      "phash": "27ae8c8c2373b49c",
+      "source": "repo:assets/style-reference/exemple-01-chambre-inquiet.png",
+      "phash_quality": "récupération de la partie visible supérieure seulement; PNG source tronqué"
+    },
+    {
+      "id": "stale-job-56059bc2/s01-offre-1791202758214",
+      "sha256": "1e362a1276436583085f23278d5efbd8a60a1081fb09e0f06764ecd1ebe8f506",
+      "phash": "9ddc4acb25251a96",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    },
+    {
+      "id": "stale-job-56059bc2/s02-experiences-1791203041619",
+      "sha256": "e4a2a96b80bc567a719b6f11c37691ea5804d0022a532ff3592232febb4559ba",
+      "phash": "d62777c978d8c180",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    },
+    {
+      "id": "stale-job-56059bc2/s03-presentation-1791203323163",
+      "sha256": "f711998d08e4eb3129a3b079ad06100ea3dc1a09009b5c7b0b66575340531ed3",
+      "phash": "b776bf86258201d8",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    },
+    {
+      "id": "stale-job-56059bc2/s04-entreprise-1791203602677",
+      "sha256": "0cdaf1d36f314475275f09d745f021dbd2710d91e9cae8454ec3d672785e4eb1",
+      "phash": "57d6c549383cc3b0",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    },
+    {
+      "id": "stale-job-56059bc2/s05-arrivee-1791203881358",
+      "sha256": "7e6b576d6bf743e977d75f9ec55420b1248ef8461e9c5723a3bc9994dcd59741",
+      "phash": "bfa62d390b2f090c",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    },
+    {
+      "id": "stale-job-56059bc2/s06-ecoute-1791204161571",
+      "sha256": "0ca6fd7ec4ddaa4ab513dd03de19d7c71bcc9beff8024c4dd64a10d765892035",
+      "phash": "018aeb649c99c6fa",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    },
+    {
+      "id": "stale-job-56059bc2/s07-faits-1791204441075",
+      "sha256": "7bdb36f201afa5fb5eea0ffe3728cf3aa3a273d6c31004194d1d8b43dc58bcd8",
+      "phash": "128061e8693efff0",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    },
+    {
+      "id": "stale-job-56059bc2/s08-suivi-1791204725152",
+      "sha256": "641705446cc5738920b7ba3730fe859731e0c37a697fd9b41d027ed404a59b79",
+      "phash": "e8c94b78946bb294",
+      "source": "supabase:video_jobs/56059bc2/stale-test-render"
+    }
+  ]
+}

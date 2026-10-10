@@ -115,6 +115,47 @@ async function burnSubtitles({ videoPath, srtPath, outputPath, fontSizePx, margi
   return outputPath;
 }
 
+function formatSrtTimestamp(totalSeconds) {
+  const totalMillis = Math.round(Math.max(0, Number(totalSeconds) || 0) * 1000);
+  const hours = Math.floor(totalMillis / 3600000);
+  const minutes = Math.floor((totalMillis % 3600000) / 60000);
+  const wholeSeconds = Math.floor((totalMillis % 60000) / 1000);
+  const millis = totalMillis % 1000;
+  const p2 = (value) => String(value).padStart(2, '0');
+  const p3 = (value) => String(value).padStart(3, '0');
+  return `${p2(hours)}:${p2(minutes)}:${p2(wholeSeconds)},${p3(millis)}`;
+}
+
+function buildTextOverlaySrt(overlays = []) {
+  const list = Array.isArray(overlays) ? overlays : [];
+  return list.map((overlay, index) => {
+    const text = String(overlay && overlay.text || '').trim();
+    const start = Number(overlay && overlay.start_seconds);
+    const end = Number(overlay && overlay.end_seconds);
+    if (!text || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+      throw new Error(`videoRenderer: texte superposé invalide à l’index ${index}.`);
+    }
+    return `${index + 1}\n${formatSrtTimestamp(start)} --> ${formatSrtTimestamp(end)}\n${text.replace(/\r/g, '')}\n`;
+  }).join('\n');
+}
+
+async function burnTextOverlays({ videoPath, overlays, outputPath, workDir, width = 720, height = 1280 }) {
+  const srt = buildTextOverlaySrt(overlays);
+  if (!srt) return videoPath;
+  await fs.mkdir(workDir, { recursive: true });
+  const srtPath = path.join(workDir, 'text-overlays.srt');
+  await fs.writeFile(srtPath, srt, 'utf8');
+  const escapedSrt = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+  const style = `FontName=DejaVu Sans,FontSize=${Math.max(18, Math.round(width / 32))},PrimaryColour=&H00FFFFFF,OutlineColour=&H00101A2E,BackColour=&HCC101A2E,BorderStyle=3,Outline=0,Shadow=0,MarginL=28,MarginR=28,MarginV=${Math.round(height * 0.18)},Alignment=8`;
+  await runFfmpeg([
+    '-i', videoPath,
+    '-vf', `subtitles='${escapedSrt}':force_style='${style}'`,
+    '-c:a', 'copy',
+    outputPath,
+  ], { label: 'burnTextOverlays' });
+  return outputPath;
+}
+
 /** Mesure les plages de silence longues dans une piste vocale réelle. */
 async function detectAbnormalSilence(filePath, { minSilenceSeconds = 2.5, noiseDb = -42 } = {}) {
   return new Promise((resolve, reject) => {
@@ -158,6 +199,7 @@ async function renderManifest({
   scenes = [],
   audioSegments = {},
   subtitlesSrtPath = null,
+  textOverlays = [],
   width = 1080,
   height = 1920,
   fps = DEFAULT_FPS,
@@ -238,6 +280,21 @@ async function renderManifest({
     });
   }
 
+  let textOverlaysBurned = false;
+  if (Array.isArray(textOverlays) && textOverlays.length) {
+    const overlayPath = path.join(workDir, 'video-with-text-overlays.mp4');
+    await burnTextOverlays({
+      videoPath: finalPath,
+      overlays: textOverlays,
+      outputPath: overlayPath,
+      workDir,
+      width,
+      height,
+    });
+    finalPath = overlayPath;
+    textOverlaysBurned = true;
+  }
+
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.copyFile(finalPath, outputPath);
 
@@ -252,7 +309,8 @@ async function renderManifest({
       ? 'mixed'
       : (audioSourcesUsed.has('voice') ? 'voice' : 'silence'),
     subtitlesBurned: Boolean(subtitlesSrtPath),
+    textOverlaysBurned,
   };
 }
 
-module.exports = { isAvailable, renderStillClip, concatClips, normalizeAudioSegment, burnSubtitles, detectAbnormalSilence, renderManifest };
+module.exports = { isAvailable, renderStillClip, concatClips, normalizeAudioSegment, burnSubtitles, formatSrtTimestamp, buildTextOverlaySrt, burnTextOverlays, detectAbnormalSilence, renderManifest };

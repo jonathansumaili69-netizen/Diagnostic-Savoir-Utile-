@@ -10,6 +10,7 @@ const visualConsistency = require('./visualConsistency');
 const imageProviders = require('./imageProviders');
 const assetCache = require('./assetCache');
 const mediaStorage = require('./mediaStorage');
+const mediaProvenance = require('./mediaProvenance');
 const { logger } = require('./logger');
 
 /**
@@ -101,6 +102,7 @@ async function hydratePersistedVideoAssets(scenes = [], persisted = null, { widt
   const byId = new Map(entries.map((entry) => [String(entry.scene_id), entry]));
   const results = [];
   const seenHashes = new Set();
+  const seenPHashes = [];
   for (let i = 0; i < list.length; i += 1) {
     const scene = list[i] && typeof list[i] === 'object' ? list[i] : {};
     const sceneId = String(scene.id || scene.scene_id || `scene_${i + 1}`);
@@ -134,6 +136,16 @@ async function hydratePersistedVideoAssets(scenes = [], persisted = null, { widt
     }
     if (seenHashes.has(digest)) throw new Error(`Hash d’image dupliqué sur la scène ${sceneId}; reprise stricte refusée.`);
     seenHashes.add(digest);
+    const provenance = await mediaProvenance.assertAssetAllowed({ asset: { buffer, asset_type: entry.asset_type, source_path: entry.source_path }, scene });
+    if (provenance.phash) {
+      for (const previous of seenPHashes) {
+        const distance = visualConsistency.hammingDistance(provenance.phash, previous.phash);
+        if (distance <= mediaProvenance.SCENE_DUPLICATE_HAMMING_MAX) {
+          throw new Error(`Asset persisté ${sceneId} trop proche visuellement de ${previous.scene_id}; reprise stricte refusée.`);
+        }
+      }
+      seenPHashes.push({ scene_id: sceneId, phash: provenance.phash });
+    }
     let localPath = entry.local_path || null;
     if (workDir) {
       // eslint-disable-next-line no-await-in-loop
@@ -142,7 +154,7 @@ async function hydratePersistedVideoAssets(scenes = [], persisted = null, { widt
       // eslint-disable-next-line no-await-in-loop
       await fs.writeFile(localPath, buffer);
     }
-    results.push({ ...entry, scene_id: sceneId, local_path: localPath, cache_hit: true, storage_url: assetUrl.href, url: assetUrl.href });
+    results.push({ ...entry, scene_id: sceneId, local_path: localPath, provenance, cache_hit: true, storage_url: assetUrl.href, url: assetUrl.href });
   }
   return {
     total: results.length,
@@ -177,7 +189,10 @@ async function evaluateCharacterConsistency({ scene, asset, characterId }) {
   const referenceLabels = character.references.map((r) => `${r.role}:${r.filename}`);
   try {
     const result = await visualConsistency.checkConsistency({ generated: asset.buffer, references, referenceLabels });
-    return { ...result, character_id: characterId, enforce: asset.asset_type === 'AI_IMAGE_REFERENCED' };
+    const identityConditioning = asset.asset_type === 'AI_IMAGE_REFERENCED'
+      ? 'official_reference_used_for_generation'
+      : 'not_conditioned_on_identity_reference';
+    return { ...result, character_id: characterId, identity_conditioning: identityConditioning, enforce: asset.asset_type !== 'EXISTING_ASSET' };
   } catch (err) {
     logger.warn('visualEngine: controle de coherence visuelle impossible', { scene_id: scene.id || null, error: err.message });
     return {
@@ -185,6 +200,8 @@ async function evaluateCharacterConsistency({ scene, asset, characterId }) {
       character_id: characterId,
       raison: `Controle de coherence non realisable techniquement (${err.message}) : a verifier manuellement.`,
       evaluated: 0,
+      identity_conditioning: asset.asset_type === 'AI_IMAGE_REFERENCED' ? 'official_reference_used_for_generation' : 'not_conditioned_on_identity_reference',
+      enforce: asset.asset_type !== 'EXISTING_ASSET',
     };
   }
 }
@@ -195,19 +212,31 @@ async function evaluateCharacterConsistency({ scene, asset, characterId }) {
  * sert uniquement a la verification de continuite de style (voir
  * visualContinuity.evaluateScene).
  */
-async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes = [], workDir = null, useCache = true, index = 0, requireAiGeneration = false, seenHashes = null } = {}) {
+async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes = [], workDir = null, useCache = true, index = 0, requireAiGeneration = false, seenHashes = null, seenPHashes = null } = {}) {
   const continuite = visualContinuity.evaluateScene(scene, priorScenes);
   const characterId = characterRegistry.resolveCharacterId(scene.personnage || scene.character_id || '');
   const character = characterId ? characterRegistry.getCharacter(characterId) : null;
   const cacheParams = cacheParamsFor(scene, width, height);
 
   let asset = requireAiGeneration ? null : (useCache ? await tryHydrateFromCache(cacheParams) : null);
-  const fromCache = Boolean(asset);
+  let fromCache = Boolean(asset);
   let providerAttempts = [];
+  if (asset) {
+    const cachedProvenance = await mediaProvenance.inspectAsset({ asset, scene });
+    if (!cachedProvenance.ok) {
+      logger.warn('visualEngine: asset de cache refusé par provenance; génération neuve tentée', {
+        scene_id: scene.id || null, failures: cachedProvenance.failures,
+      });
+      asset = null;
+      fromCache = false;
+    }
+  }
   if (!asset) {
     asset = await imageProviders.generateAsset({ scene, width, height, mode, requireAiGeneration });
     providerAttempts = asset.provider_attempts || [];
   }
+
+  const provenance = await mediaProvenance.assertAssetAllowed({ asset, scene });
 
   const contentSha256 = asset.content_sha256 || crypto.createHash('sha256').update(asset.buffer).digest('hex');
   if (requireAiGeneration && asset.asset_type !== 'AI_IMAGE_GENERATED') {
@@ -217,6 +246,15 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
     throw new Error(`L’image de la scène ${scene.id || index + 1} est un doublon binaire d’une autre scène; le job strict est refusé.`);
   }
   if (requireAiGeneration && seenHashes) seenHashes.add(contentSha256);
+  if (requireAiGeneration && seenPHashes && provenance.phash) {
+    for (const previous of seenPHashes) {
+      const distance = visualConsistency.hammingDistance(provenance.phash, previous.phash);
+      if (distance <= mediaProvenance.SCENE_DUPLICATE_HAMMING_MAX) {
+        throw new Error(`L’image de la scène ${scene.id || index + 1} est un quasi-doublon visuel de ${previous.scene_id}; le job strict est refusé.`);
+      }
+    }
+    seenPHashes.push({ scene_id: String(scene.id || scene.scene_id || `scene_${index + 1}`), phash: provenance.phash });
+  }
 
   let localPath = null;
   if (workDir) {
@@ -264,6 +302,10 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
   return {
     scene_id: scene.id || scene.numero || null,
     asset_type: asset.asset_type || null,
+    source_path: asset.source_path || (asset.provenance && asset.provenance.source_path) || null,
+    official_asset_id: scene.official_asset_id || null,
+    logo_requis: scene.logo_requis === true,
+    allow_official_reference_frame: scene.allow_official_reference_frame === true,
     provider: asset.provider || null,
     model: asset.model || null,
     content_sha256: contentSha256,
@@ -274,6 +316,7 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
     url: storage.url || null,
     storage,
     cache_hit: fromCache,
+    provenance,
     continuite,
     provider_attempts: providerAttempts,
     character: character
@@ -290,7 +333,8 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
       }
       : null,
     consistency,
-    needs_review: Boolean(consistency && consistency.enforce && consistency.status !== 'PASS'),
+    needs_review: Boolean(consistency && consistency.enforce
+      && (consistency.status !== 'PASS' || consistency.identity_conditioning === 'not_conditioned_on_identity_reference')),
   };
 }
 
@@ -305,16 +349,27 @@ async function resolveVideoAssets(scenes = [], options = {}) {
   const list = Array.isArray(scenes) ? scenes : [];
   const results = [];
   const seenHashes = new Set();
+  const seenPHashes = [];
   for (let i = 0; i < list.length; i += 1) {
     const scene = list[i] && typeof list[i] === 'object' ? list[i] : {};
     try {
       // eslint-disable-next-line no-await-in-loop
-      const resolved = await resolveSceneAsset(scene, { ...options, seenHashes, priorScenes: list.slice(0, i), index: i });
+      const resolved = await resolveSceneAsset(scene, { ...options, seenHashes, seenPHashes, priorScenes: list.slice(0, i), index: i });
       results.push({ ok: true, ...resolved });
     } catch (err) {
       logger.error('visualEngine: echec de resolution d asset pour une scene', { scene_id: scene.id || null, error: err.message });
       results.push({ ok: false, scene_id: scene.id || scene.numero || null, erreur: err.message });
     }
+  }
+  const provenanceAudit = await mediaProvenance.auditAssetCollection(results.filter((result) => result.ok), { exampleRoot: options.exampleRoot });
+  const rejectedScenes = new Map(provenanceAudit.rejected.map((item) => [String(item.scene_id), item.failures.join('; ')]));
+  const duplicateScenes = new Set(provenanceAudit.duplicates.map((item) => String(item.scene_id)));
+  for (let i = 0; i < results.length; i += 1) {
+    const item = results[i];
+    if (!item.ok) continue;
+    const detail = rejectedScenes.get(String(item.scene_id))
+      || (duplicateScenes.has(String(item.scene_id)) ? 'quasi-doublon visuel détecté dans les scènes sélectionnées' : null);
+    if (detail) results[i] = { ...item, ok: false, erreur: `Audit mediaProvenance: ${detail}` };
   }
   const withCharacter = results.filter((r) => r.ok && r.character);
   return {
@@ -329,6 +384,7 @@ async function resolveVideoAssets(scenes = [], options = {}) {
       coherence_fail: withCharacter.filter((r) => r.consistency && r.consistency.status === 'FAIL').length,
       scenes_a_verifier: withCharacter.filter((r) => r.needs_review).map((r) => r.scene_id),
     },
+    provenance_audit: provenanceAudit,
     scenes: results,
   };
 }
