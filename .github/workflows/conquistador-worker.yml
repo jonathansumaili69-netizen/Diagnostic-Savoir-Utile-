@@ -109,23 +109,22 @@ jobs:
           echo "backend=$IMAGE_TEXT_TO_IMAGE_BACKEND"
           node -e "console.log(JSON.stringify(require('./src/core/imageProviders/realisticVisionLcmCpuProvider').status()))"
 
-      - name: Sante Voice Studio (externe, sortie assainie)
+      - name: Verification reelle Voice Studio via synthese (sortie assainie)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.validate_only != true }}
         env:
           VOICE_STUDIO_API_URL: ${{ secrets.VOICE_STUDIO_API_URL }}
         run: |
           node <<'NODE'
-          const { health } = require('./src/core/voiceStudio');
-          health().then((h) => {
-            const endpoint = String(process.env.VOICE_STUDIO_API_URL || '');
-            const rawReason = String(h.reason || '');
-            const reason = endpoint ? rawReason.split(endpoint).join('[endpoint masqué]') : rawReason;
-            console.log(JSON.stringify({ configured: h.configured, available: h.available, provider: h.provider, voice: h.voice, reason: reason || null }));
-            if (!h.available) process.exitCode = 1;
+          const { synthesize } = require('./src/core/voiceStudio');
+          synthesize({ text: 'Vérification de disponibilité du studio vocal Savoir Utile.' }).then((audio) => {
+            const bytes = Buffer.isBuffer(audio.buffer) ? audio.buffer.length : 0;
+            const available = bytes > 0;
+            console.log(JSON.stringify({ configured: true, available, provider: 'edge-tts', voice: 'Rémy Neural', content_type: audio.contentType, audio_bytes: bytes, test_audio_saved: false }));
+            if (!available) process.exitCode = 1;
           }).catch((error) => {
             const endpoint = String(process.env.VOICE_STUDIO_API_URL || '');
             const message = String(error.message || error);
-            console.error(`Voice Studio health check failed: ${endpoint ? message.split(endpoint).join('[endpoint masqué]') : message}`);
+            console.error(`Voice Studio synthesis probe failed: ${endpoint ? message.split(endpoint).join('[endpoint masqué]') : message}`);
             process.exitCode = 1;
           });
           NODE

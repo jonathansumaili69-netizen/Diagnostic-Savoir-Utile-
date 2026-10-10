@@ -1,5 +1,7 @@
 # Assets — references visuelles officielles
 
+La couverture officielle du guide Savoir Utile « La méthode complète pour trouver un emploi en Afrique francophone » se trouve dans `assets/products/savoir-utile-emploi-cover.png`. Elle provient de la fiche produit publique : https://savoir-utile.mychariow.shop/prd_s33t0e.
+
 Ce dossier contient les references visuelles OFFICIELLES fournies par
 Savoir Utile, integrees directement au projet pour que
 VISUAL_CONTINUITY_POLICY (`src/core/visualContinuity.js`) puisse les
