@@ -11,7 +11,7 @@ const productEndCard = require('../src/core/productEndCard');
 test('productEndCard.compose: garde la couverture officielle et la CTA dans une image verticale', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'conquistador-end-card-'));
   const backgroundPath = path.join(dir, 'background.png');
-  const outputPath = path.join(dir, 'end-card.png');
+  const outputPath = path.join(dir, 'nested', 'end-card.png');
   try {
     await sharp({ create: { width: 720, height: 1280, channels: 3, background: '#20334a' } }).png().toFile(backgroundPath);
     const result = await productEndCard.compose({

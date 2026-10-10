@@ -36,6 +36,7 @@ async function compose({ backgroundPath, outputPath, width = 720, height = 1280,
   const svg = Buffer.from(buildOverlaySvg({
     width, height, title, brand, cta, coverBase64: cover.toString('base64'),
   }));
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await sharp(backgroundPath)
     .resize(width, height, { fit: 'cover' })
     .composite([{ input: svg, blend: 'over' }])
