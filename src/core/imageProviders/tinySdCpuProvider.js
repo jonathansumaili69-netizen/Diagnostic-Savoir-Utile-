@@ -7,6 +7,7 @@ const fs = require('fs/promises');
 const { spawn } = require('child_process');
 const sharp = require('sharp');
 const { logger } = require('../logger');
+const characterRegistry = require('../characterRegistry');
 
 const PROVIDER = 'tiny-sd-cpu';
 const DEFAULT_MODEL = 'segmind/tiny-sd';
@@ -38,7 +39,23 @@ function status() {
 }
 
 function buildPrompt(scene = {}) {
-  return String(scene.prompt_final || scene.description || scene.voix_off_scene || '').trim();
+  const scenePrompt = String(scene.prompt_final || scene.description || scene.voix_off_scene || '').trim();
+  const label = scene.personnage || scene.character_id || scene.personnage_id || '';
+  const characters = characterRegistry.involvesBoth(label)
+    ? characterRegistry.CHARACTER_IDS.map((id) => characterRegistry.getCharacter(id, { includeSecondary: false }))
+    : [characterRegistry.getCharacter(characterRegistry.resolveCharacterId(label), { includeSecondary: false })].filter(Boolean);
+  const identity = characters.map((character) =>
+    `Personnage officiel ${character.nom} : ${character.description_visuelle} Visage : ${character.caracteristiques_visage} Coiffure : ${character.coiffure} Tenue : ${character.vetements_style} Éléments distinctifs : ${character.elements_distinctifs} Style : ${character.style_visuel}`,
+  );
+  return [scenePrompt, ...identity].filter(Boolean).join('\n');
+}
+
+function buildNegativePrompt(scene = {}) {
+  const label = scene.personnage || scene.character_id || scene.personnage_id || '';
+  const hasOfficialCharacter = Boolean(characterRegistry.resolveCharacterId(label) || characterRegistry.involvesBoth(label));
+  return hasOfficialCharacter
+    ? 'blurry, low quality, unreadable text, watermark, logo, distorted face, extra limbs'
+    : 'people, person, human, visible face, hands, blurry, low quality, readable text, watermark, logo';
 }
 
 function cleanDiagnostic(stderr = '') {
@@ -131,7 +148,7 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
   const inputPath = path.join(tempDir, 'request.json');
   const outputPath = path.join(tempDir, 'generated.png');
   try {
-    await fs.writeFile(inputPath, JSON.stringify({ prompt, width: nativeWidth, height: nativeHeight, steps, seed }), 'utf8');
+    await fs.writeFile(inputPath, JSON.stringify({ prompt, negative_prompt: buildNegativePrompt(scene), width: nativeWidth, height: nativeHeight, steps, seed }), 'utf8');
     await runGenerator({ inputPath, outputPath, timeoutMs });
     const raw = await fs.readFile(outputPath);
     if (!raw.length) throw new Error('Tiny-SD CPU a renvoyé une image vide.');
@@ -190,6 +207,7 @@ module.exports = {
   DEFAULT_STEPS,
   status,
   buildPrompt,
+  buildNegativePrompt,
   generate,
   setGenerateForTest,
 };

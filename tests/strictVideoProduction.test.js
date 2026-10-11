@@ -98,6 +98,20 @@ test('HF text-to-image: sans HF_TOKEN, échec explicite avant réseau', async ()
   );
 });
 
+test('Tiny-SD: les personnages officiels sont inclus et ne sont plus exclus du rendu', () => {
+  const samuelScene = { personnage: 'Samuel', prompt_final: 'Samuel prépare un CV dans une chambre.' };
+  const samuelPrompt = tinySdCpuProvider.buildPrompt(samuelScene);
+  const samuelNegative = tinySdCpuProvider.buildNegativePrompt(samuelScene);
+  assert.match(samuelPrompt, /chemise bleue claire/i);
+  assert.match(samuelPrompt, /sac a dos beige/i);
+  assert.doesNotMatch(samuelNegative, /people|person|human|visible face/i);
+  const duoScene = { personnage: 'Samuel et Marc', prompt_final: 'Ils préparent une candidature.' };
+  const duoPrompt = tinySdCpuProvider.buildPrompt(duoScene);
+  assert.match(duoPrompt, /Personnage officiel Samuel/);
+  assert.match(duoPrompt, /Personnage officiel Marc/);
+  assert.match(tinySdCpuProvider.buildNegativePrompt({ description: 'Un bureau vide' }), /people, person, human/);
+});
+
 test('HF text-to-image: appel provider réel simulé, image PNG originale et hash mesuré', async () => {
   let capturedArgs;
   const oldLogToken = process.env.HF_TOKEN;

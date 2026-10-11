@@ -28,11 +28,11 @@ Liens : [fiche modèle FLUX.1-schnell](https://huggingface.co/black-forest-labs/
 
 Les mappings ont été lus dans l’API publique Hugging Face `inferenceProviderMapping`; les entrées `status:error` ne sont pas comptées comme disponibles. Sources : [Qwen Image](https://huggingface.co/Qwen/Qwen-Image), [Qwen Image Edit 2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511), [Fal Qwen Image](https://fal.ai/models/fal-ai/qwen-image), [Fal Qwen Image Edit 2511](https://fal.ai/models/fal-ai/qwen-image-edit-2511).
 
-## Comportement du profil `strict_multiscene`
+## Comportement réel du profil `strict_multiscene`
 
-- Toutes les scènes passent par un appel réel HF `textToImage` avec le modèle sélectionné et le token conservé côté serveur.
+- Le profil strict force `tiny_sd_cpu` dans `imageProviders.generateAsset()`; il n’appelle pas le provider Hugging Face text-to-image décrit plus haut. Les poids publics Tiny-SD sont chargés par le worker CPU, sans `HF_TOKEN`.
 - Aucune utilisation du cache, `existing_asset`, du fournisseur Pollinations, du moteur graphique ou d’un placeholder comme résultat de scène.
-- Le texte doit venir d’un provider LLM réel; le profil strict refuse `mock`/fallback. Il vise 8 scènes faceless, chaque narration faisant partie du script.
+- Le texte doit venir d’un provider LLM réel; le profil strict refuse `mock`/fallback. Il vise 8 scènes de narration faceless, mais les scènes d’illustration peuvent inclure les personnages officiels.
 - Échec HF, image non valide, doublon binaire, stockage Supabase impossible, voix absente, sous-titres incomplets ou contrôle vidéo échoué ⇒ job **FAILED**, jamais `COMPLETED`.
 - Chaque image acceptée possède un événement de log `AI_IMAGE_GENERATED`, un SHA-256 et une référence Supabase distincts. Les événements `EXISTING_ASSET` et `FALLBACK` sont explicitement différenciés pour les chemins non stricts.
 - L’image générée est redimensionnée en PNG 720×1280 après la génération, pour aligner la sortie sur le canevas vertical du rendu.
@@ -43,5 +43,5 @@ Les mappings ont été lus dans l’API publique Hugging Face `inferenceProvider
 
 1. Le crédit HF de 0,10 $ est individuel, mensuel, potentiellement déjà consommé par d’autres usages, et HF le dit sujet à changement. Il n’y a donc aucune garantie qu’un appel passe sans achat de crédits.
 2. Les 0,024 $ pour huit images sont une estimation au tarif Fal public de la date de vérification, avant taxes ou différences de routage HF; vérifier le solde et le tarif affiché par HF avant toute production payante.
-3. Le profil strict utilise la génération T2I et le style/palette communs; il ne revendique pas de conditionnement par l’image précédente avec FLUX.1-schnell via la route HF vérifiée.
+3. Le profil strict utilise Tiny-SD T2I. Pour Samuel/Marc, leurs descriptions officielles et leurs tenues sont ajoutées au prompt, mais les images officielles ne sont pas transmises au modèle : la cohérence d’identité n’est donc pas garantie. Une génération image-to-image réellement conditionnée exige un provider configuré, potentiellement payant; elle n’est pas activée par défaut.
 4. La génération de la vidéo complète dépend aussi de `HF_TOKEN`, des secrets Supabase, de la disponibilité du studio Rémy Neural et du worker FFmpeg. Ces secrets ne doivent jamais être exposés dans ce document, les journaux ou le frontend.

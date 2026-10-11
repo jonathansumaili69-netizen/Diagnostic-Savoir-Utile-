@@ -12,7 +12,8 @@ MODEL_ID = "segmind/tiny-sd"
 STYLE_SUFFIX = (
     "vertical editorial illustration, semi-realistic, soft natural cinematic light, "
     "navy blue, ivory and muted ochre palette, clean mobile composition, "
-    "faceless, no readable text, no logos"
+    "narrative scene illustration, not a talking-head presenter, "
+    "characters may appear when specified, no readable text, no logos"
 )
 NEGATIVE_PROMPT = (
     "people, person, human, visible face, hands, blurry, low quality, "
@@ -53,6 +54,7 @@ def main() -> int:
     height = int(request.get("height", 896))
     steps = int(request.get("steps", 25))
     seed = int(request.get("seed", 1))
+    negative_prompt = str(request.get("negative_prompt", NEGATIVE_PROMPT)).strip() or NEGATIVE_PROMPT
     if width < 64 or height < 64 or width % 8 or height % 8:
         raise ValueError("Width and height must be positive multiples of 8.")
     if not 1 <= steps <= 50:
@@ -86,7 +88,7 @@ def main() -> int:
     with torch.inference_mode():
         image = pipe(
             prompt=prompt,
-            negative_prompt=NEGATIVE_PROMPT,
+            negative_prompt=negative_prompt,
             width=width,
             height=height,
             num_inference_steps=steps,

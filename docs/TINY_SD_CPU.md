@@ -7,12 +7,14 @@ Le profil strict peut utiliser `IMAGE_TEXT_TO_IMAGE_BACKEND=tiny_sd_cpu` pour g�
 - Modèle : [`segmind/tiny-sd`](https://huggingface.co/segmind/tiny-sd), Stable Diffusion distillé, dérivé de Realistic Vision.
 - Licence déclarée par sa carte : `creativeml-openrail-m` (CreativeML OpenRAIL-M), **pas Apache 2.0**. La licence accorde des droits sans redevance, y compris pour des usages commerciaux, sous réserve de ses restrictions d’utilisation; le titulaire reste responsable des outputs et de leur usage. Pour le texte de licence et l’Attachment A, voir [la licence OpenRAIL-M](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md).
 - Les références d’image ne sont pas utilisées par ce provider (`reference_image_conditioning: false`). Chaque asset strict doit être classé `AI_IMAGE_GENERATED`, avoir un hash distinct et être stocké durablement avant que l’orchestrateur puisse poursuivre.
+- Les scènes nommant Samuel ou Marc incluent désormais leur description visuelle officielle, leurs traits du visage, coiffure et tenue dans le prompt. Leur prompt négatif n’exclut plus `people`, `human` ni les visages; les scènes sans personnage officiel gardent cette exclusion. Cela supprime un blocage de rendu, mais **ne remplace pas** le conditionnement avec les images de référence et ne garantit pas l’identité visuelle.
+- Realistic Vision n’est pas un modèle installé/exécuté par ce dépôt au moment du diagnostic : le backend codé est `segmind/tiny-sd`, documenté comme dérivé de Realistic Vision. Le code ne constate pas de poids préinstallés et le worker les télécharge sur son runner à l’exécution.
 
 ## Exécution
 
 Le workflow existant s’exécute sur `ubuntu-24.04`, runner standard public (4 CPU, 16 GB RAM), gratuit pour le dépôt public GitHub. Il installe une version CPU de PyTorch, Diffusers et Transformers. Tiny-SD produit nativement du `504×896` (9:16), à 25 steps; Sharp l’agrandit à `720×1280` avant stockage et montage.
 
-Mesure locale observée dans le Sandbox (2 CPU) : une génération réelle `504×896`, 25 steps, a pris `296,5 s`. L’extrapolation linéaire à 4 CPU donne environ `19,8 min` pour huit images; ce chiffre n’est qu’une estimation — le Worker conserve son timeout de 45 minutes et la vidéo n’est pas considérée terminée tant que tous ses contrôles ne passent pas.
+Mesure précédemment rapportée dans le dépôt : une génération `504×896`, 25 steps, a pris `296,5 s` dans un Sandbox à 2 CPU. Cette valeur n’a pas été reproduite pendant la présente réparation; l’extrapolation à huit scènes n’est qu’une estimation. Dans le sandbox de cette réparation, aucun poids Realistic Vision/Tiny-SD ni PyTorch/Diffusers n’est présent : une inférence locale réelle n’a donc pas été exécutée.
 
 ## Workflow
 
