@@ -34,7 +34,10 @@ function status() {
     requires_api_key: false,
     device: 'CPU',
     inference_endpoint: false,
-    reference_image_conditioning: false,
+    default_img2img_strength: 0.3,
+    reference_image_conditioning: true,
+    reference_image_conditioning_mode: 'per-scene when an official character is specified',
+    reference_image_input: 'official character registry primary image; duo scenes use the official duo image',
   };
 }
 
@@ -50,12 +53,27 @@ function buildPrompt(scene = {}) {
   return [scenePrompt, ...identity].filter(Boolean).join('\n');
 }
 
+function resolveReferenceImage(scene = {}) {
+  const label = scene.personnage || scene.character_id || scene.personnage_id || '';
+  if (characterRegistry.involvesBoth(label)) {
+    const absPath = path.join(characterRegistry.ASSETS_ROOT, 'personnages', 'samuel-et-marc-ensemble.jpg');
+    if (!require('fs').existsSync(absPath)) throw new Error(`Référence officielle Samuel/Marc absente : ${absPath}`);
+    return { abs_path: absPath, character_ids: [...characterRegistry.CHARACTER_IDS] };
+  }
+  const characterId = characterRegistry.resolveCharacterId(label);
+  if (!characterId) return null;
+  const character = characterRegistry.getCharacter(characterId, { includeSecondary: false });
+  const absPath = character && character.reference_principale && character.reference_principale.abs_path;
+  if (!absPath || !character.reference_principale.disponible) throw new Error(`Référence officielle principale absente pour ${characterId}.`);
+  return { abs_path: absPath, character_ids: [characterId] };
+}
+
 function buildNegativePrompt(scene = {}) {
   const label = scene.personnage || scene.character_id || scene.personnage_id || '';
   const hasOfficialCharacter = Boolean(characterRegistry.resolveCharacterId(label) || characterRegistry.involvesBoth(label));
   return hasOfficialCharacter
-    ? 'blurry, low quality, unreadable text, watermark, logo, distorted face, extra limbs'
-    : 'people, person, human, visible face, hands, blurry, low quality, readable text, watermark, logo';
+    ? 'blurry, low quality, text, letters, words, writing, watermark, logo, distorted face, extra limbs'
+    : 'people, person, human, visible face, hands, blurry, low quality, text, letters, words, writing, watermark, logo';
 }
 
 function cleanDiagnostic(stderr = '') {
@@ -69,7 +87,26 @@ function cleanDiagnostic(stderr = '') {
     .slice(0, 500);
 }
 
-function runGenerator({ inputPath, outputPath, timeoutMs }) {
+function parseExecutionReceipt(stdout, referenceImagePath) {
+  const receiptLine = String(stdout || '').trim().split(/\r?\n/).reverse()
+    .find((line) => line.startsWith('CONQUISTADOR_RESULT='));
+  if (!receiptLine) throw new Error('Tiny-SD CPU n’a pas émis de reçu d’exécution vérifiable.');
+  let receipt;
+  try { receipt = JSON.parse(receiptLine.slice('CONQUISTADOR_RESULT='.length)); } catch {
+    throw new Error('Tiny-SD CPU a émis un reçu d’exécution illisible.');
+  }
+  if (!receipt || typeof receipt !== 'object' || receipt.ok !== true) {
+    throw new Error('Tiny-SD CPU a émis un reçu signalant un échec de génération.');
+  }
+  const expectedReference = referenceImagePath ? path.resolve(referenceImagePath) : null;
+  if (receipt.reference_image_conditioning !== Boolean(expectedReference)
+      || (expectedReference && path.resolve(String(receipt.reference_image_path || '')) !== expectedReference)) {
+    throw new Error('Tiny-SD CPU n’a pas confirmé l’utilisation de la référence officielle attendue.');
+  }
+  return receipt;
+}
+
+function runGenerator({ inputPath, outputPath, timeoutMs, referenceImagePath }) {
   return new Promise((resolve, reject) => {
     const python = String(process.env.TINY_SD_PYTHON || 'python3');
     const childEnv = { ...process.env, HF_HUB_DISABLE_IMPLICIT_TOKEN: '1' };
@@ -85,6 +122,7 @@ function runGenerator({ inputPath, outputPath, timeoutMs }) {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stderr = '';
+    let stdout = '';
     let settled = false;
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -93,6 +131,9 @@ function runGenerator({ inputPath, outputPath, timeoutMs }) {
       setTimeout(() => child.kill('SIGKILL'), 5000).unref();
     }, timeoutMs);
 
+    child.stdout.on('data', (chunk) => {
+      stdout = (stdout + chunk.toString()).slice(-8000);
+    });
     child.stderr.on('data', (chunk) => {
       stderr = (stderr + chunk.toString()).slice(-8000);
     });
@@ -112,7 +153,7 @@ function runGenerator({ inputPath, outputPath, timeoutMs }) {
         const diagnostic = cleanDiagnostic(stderr);
         reject(new Error(`Tiny-SD CPU a échoué (code ${code}, signal ${signal || 'aucun'}). ${diagnostic}`.trim()));
       } else {
-        resolve();
+        try { resolve(parseExecutionReceipt(stdout, referenceImagePath)); } catch (error) { reject(error); }
       }
     });
   });
@@ -120,8 +161,8 @@ function runGenerator({ inputPath, outputPath, timeoutMs }) {
 
 async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
   if (testGenerate) return testGenerate({ scene, width, height, timeoutMs });
-
   const prompt = buildPrompt(scene);
+  const reference = resolveReferenceImage(scene);
   if (!prompt) throw new Error(`Prompt d’image absent pour la scène ${scene.id || 'inconnue'}.`);
   const w = Math.round(Number(width));
   const h = Math.round(Number(height));
@@ -147,9 +188,25 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'conquistador-tiny-sd-'));
   const inputPath = path.join(tempDir, 'request.json');
   const outputPath = path.join(tempDir, 'generated.png');
+  const referenceStrength = process.env.TINY_SD_IMG2IMG_STRENGTH === undefined
+    ? 0.3
+    : Number(process.env.TINY_SD_IMG2IMG_STRENGTH);
+  if (!(referenceStrength > 0 && referenceStrength <= 1)) {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    throw new Error('TINY_SD_IMG2IMG_STRENGTH doit être supérieur à 0 et inférieur ou égal à 1.');
+  }
   try {
-    await fs.writeFile(inputPath, JSON.stringify({ prompt, negative_prompt: buildNegativePrompt(scene), width: nativeWidth, height: nativeHeight, steps, seed }), 'utf8');
-    await runGenerator({ inputPath, outputPath, timeoutMs });
+    await fs.writeFile(inputPath, JSON.stringify({
+      prompt,
+      negative_prompt: buildNegativePrompt(scene),
+      reference_image_path: reference && reference.abs_path,
+      strength: reference ? referenceStrength : undefined,
+      width: nativeWidth,
+      height: nativeHeight,
+      steps,
+      seed,
+    }), 'utf8');
+    const receipt = await runGenerator({ inputPath, outputPath, timeoutMs, referenceImagePath: reference && reference.abs_path });
     const raw = await fs.readFile(outputPath);
     if (!raw.length) throw new Error('Tiny-SD CPU a renvoyé une image vide.');
 
@@ -162,11 +219,12 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
       throw new Error('L’image Tiny-SD agrandie ne correspond pas aux dimensions demandées.');
     }
     const sha256 = crypto.createHash('sha256').update(image).digest('hex');
-    logger.info('AI_IMAGE_GENERATED', {
+    logger.info(reference ? 'AI_IMAGE_REFERENCED' : 'AI_IMAGE_GENERATED', {
       scene_id: scene.id || scene.scene_id || null,
       provider: PROVIDER,
       model: DEFAULT_MODEL,
       device: 'CPU',
+      reference_image_conditioning: Boolean(reference),
       width: w,
       height: h,
       native_width: nativeWidth,
@@ -179,7 +237,7 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
       contentType: 'image/png',
       provider: PROVIDER,
       model: DEFAULT_MODEL,
-      asset_type: 'AI_IMAGE_GENERATED',
+      asset_type: reference ? 'AI_IMAGE_REFERENCED' : 'AI_IMAGE_GENERATED',
       width: w,
       height: h,
       content_sha256: sha256,
@@ -191,7 +249,10 @@ async function generate({ scene = {}, width = 720, height = 1280, timeoutMs = DE
         native_width: nativeWidth,
         native_height: nativeHeight,
         license: 'creativeml-openrail-m',
-        reference_image_conditioning: false,
+        reference_image_conditioning: receipt.reference_image_conditioning,
+        reference_image_path: receipt.reference_image_path || null,
+        reference_character_ids: reference ? reference.character_ids : [],
+        strength: reference ? referenceStrength : null,
       },
     };
   } finally {
@@ -206,8 +267,10 @@ module.exports = {
   DEFAULT_NATIVE_HEIGHT,
   DEFAULT_STEPS,
   status,
+  resolveReferenceImage,
   buildPrompt,
   buildNegativePrompt,
+  parseExecutionReceipt,
   generate,
   setGenerateForTest,
 };

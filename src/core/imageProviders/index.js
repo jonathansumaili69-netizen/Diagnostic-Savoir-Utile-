@@ -90,7 +90,11 @@ async function runChain(order, params) {
       } else if (attempts.some((attempt) => attempt.ok === false)) {
         logger.warn('FALLBACK', { provider: providerId, asset_type: asset.asset_type || null });
       } else if (asset.asset_type === 'AI_IMAGE' || asset.asset_type === 'AI_IMAGE_REFERENCED') {
-        logger.info('AI_IMAGE_GENERATED', { provider: providerId, model: asset.model || null, asset_type: asset.asset_type });
+        logger.info(asset.asset_type === 'AI_IMAGE_REFERENCED' ? 'AI_IMAGE_REFERENCED' : 'AI_IMAGE_GENERATED', {
+          provider: providerId,
+          model: asset.model || null,
+          asset_type: asset.asset_type,
+        });
       }
       return { asset, attempts };
     } catch (err) {

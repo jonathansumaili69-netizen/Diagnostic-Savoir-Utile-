@@ -102,14 +102,44 @@ test('Tiny-SD: les personnages officiels sont inclus et ne sont plus exclus du r
   const samuelScene = { personnage: 'Samuel', prompt_final: 'Samuel prépare un CV dans une chambre.' };
   const samuelPrompt = tinySdCpuProvider.buildPrompt(samuelScene);
   const samuelNegative = tinySdCpuProvider.buildNegativePrompt(samuelScene);
+  assert.match(samuelNegative, /text, letters, words, writing/i);
   assert.match(samuelPrompt, /chemise bleue claire/i);
   assert.match(samuelPrompt, /sac a dos beige/i);
   assert.doesNotMatch(samuelNegative, /people|person|human|visible face/i);
+  const samuelReference = tinySdCpuProvider.resolveReferenceImage(samuelScene);
+  assert.equal(samuelReference.character_ids[0], 'samuel');
+  assert.ok(fs.existsSync(samuelReference.abs_path));
+  assert.match(samuelReference.abs_path, /samuel-reference-principale\.jpeg$/);
   const duoScene = { personnage: 'Samuel et Marc', prompt_final: 'Ils préparent une candidature.' };
   const duoPrompt = tinySdCpuProvider.buildPrompt(duoScene);
   assert.match(duoPrompt, /Personnage officiel Samuel/);
   assert.match(duoPrompt, /Personnage officiel Marc/);
+  const duoReference = tinySdCpuProvider.resolveReferenceImage(duoScene);
+  assert.deepEqual(duoReference.character_ids, ['samuel', 'marc']);
+  assert.ok(fs.existsSync(duoReference.abs_path));
+  assert.match(duoReference.abs_path, /samuel-et-marc-ensemble\.jpg$/);
   assert.match(tinySdCpuProvider.buildNegativePrompt({ description: 'Un bureau vide' }), /people, person, human/);
+});
+
+test('Tiny-SD img2img: exige un reçu correspondant au chemin de référence réellement demandé', () => {
+  const reference = tinySdCpuProvider.resolveReferenceImage({ personnage: 'Samuel' });
+  const goodReceipt = `CONQUISTADOR_RESULT=${JSON.stringify({
+    ok: true,
+    reference_image_conditioning: true,
+    reference_image_path: reference.abs_path,
+  })}`;
+  assert.equal(tinySdCpuProvider.parseExecutionReceipt(goodReceipt, reference.abs_path).reference_image_conditioning, true);
+  assert.throws(() => tinySdCpuProvider.parseExecutionReceipt('', reference.abs_path), /reçu d’exécution vérifiable/);
+  assert.throws(() => tinySdCpuProvider.parseExecutionReceipt('CONQUISTADOR_RESULT={', reference.abs_path), /reçu d’exécution illisible/);
+  assert.throws(() => tinySdCpuProvider.parseExecutionReceipt(`CONQUISTADOR_RESULT=${JSON.stringify({ ok: false })}`, reference.abs_path), /reçu signalant un échec/);
+  const falseReceipt = `CONQUISTADOR_RESULT=${JSON.stringify({ ok: true, reference_image_conditioning: false })}`;
+  assert.throws(() => tinySdCpuProvider.parseExecutionReceipt(falseReceipt, reference.abs_path), /n’a pas confirmé l’utilisation/);
+  const wrongPath = `CONQUISTADOR_RESULT=${JSON.stringify({
+    ok: true,
+    reference_image_conditioning: true,
+    reference_image_path: '/tmp/not-an-official-reference.png',
+  })}`;
+  assert.throws(() => tinySdCpuProvider.parseExecutionReceipt(wrongPath, reference.abs_path), /n’a pas confirmé l’utilisation/);
 });
 
 test('HF text-to-image: appel provider réel simulé, image PNG originale et hash mesuré', async () => {

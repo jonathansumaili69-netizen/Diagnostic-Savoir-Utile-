@@ -105,7 +105,7 @@ async function hydratePersistedVideoAssets(scenes = [], persisted = null, { widt
     const scene = list[i] && typeof list[i] === 'object' ? list[i] : {};
     const sceneId = String(scene.id || scene.scene_id || `scene_${i + 1}`);
     const entry = byId.get(sceneId);
-    if (!entry || entry.ok !== true || entry.asset_type !== 'AI_IMAGE_GENERATED'
+    if (!entry || entry.ok !== true || !['AI_IMAGE_GENERATED', 'AI_IMAGE_REFERENCED'].includes(entry.asset_type)
       || !entry.storage_url || !/^[a-f0-9]{64}$/i.test(String(entry.content_sha256 || ''))
       || Number(entry.width) !== Number(width) || Number(entry.height) !== Number(height)) {
       throw new Error(`Asset persisté ${sceneId} incomplet ou non conforme; aucune régénération automatique ne sera tentée.`);
@@ -197,7 +197,7 @@ async function evaluateCharacterConsistency({ scene, asset, characterId }) {
  */
 async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes = [], workDir = null, useCache = true, index = 0, requireAiGeneration = false, seenHashes = null } = {}) {
   const continuite = visualContinuity.evaluateScene(scene, priorScenes);
-  const characterId = characterRegistry.resolveCharacterId(scene.personnage || scene.character_id || '');
+  const characterId = characterRegistry.resolveCharacterId(scene.personnage || scene.character_id || scene.personnage_id || '');
   const character = characterId ? characterRegistry.getCharacter(characterId) : null;
   const cacheParams = cacheParamsFor(scene, width, height);
 
@@ -210,7 +210,7 @@ async function resolveSceneAsset(scene = {}, { width, height, mode, priorScenes 
   }
 
   const contentSha256 = asset.content_sha256 || crypto.createHash('sha256').update(asset.buffer).digest('hex');
-  if (requireAiGeneration && asset.asset_type !== 'AI_IMAGE_GENERATED') {
+  if (requireAiGeneration && !['AI_IMAGE_GENERATED', 'AI_IMAGE_REFERENCED'].includes(asset.asset_type)) {
     throw new Error(`La scène ${scene.id || index + 1} n’a pas été produite par un générateur IA d’images (${asset.asset_type || 'type inconnu'}).`);
   }
   if (requireAiGeneration && seenHashes && seenHashes.has(contentSha256)) {

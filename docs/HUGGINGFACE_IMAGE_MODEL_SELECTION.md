@@ -30,11 +30,11 @@ Les mappings ont été lus dans l’API publique Hugging Face `inferenceProvider
 
 ## Comportement réel du profil `strict_multiscene`
 
-- Le profil strict force `tiny_sd_cpu` dans `imageProviders.generateAsset()`; il n’appelle pas le provider Hugging Face text-to-image décrit plus haut. Les poids publics Tiny-SD sont chargés par le worker CPU, sans `HF_TOKEN`.
+- Le profil strict force `tiny_sd_cpu` dans `imageProviders.generateAsset()`; il n’appelle pas les providers HF/Fal payants décrits plus haut et n’exige pas `HF_TOKEN`. Le worker charge les poids publics Tiny-SD sur CPU. Pour une scène qui cite Samuel/Marc, `StableDiffusionImg2ImgPipeline` reçoit le fichier officiel correspondant; pour les scènes sans personnage, le worker reste en text-to-image.
 - Aucune utilisation du cache, `existing_asset`, du fournisseur Pollinations, du moteur graphique ou d’un placeholder comme résultat de scène.
 - Le texte doit venir d’un provider LLM réel; le profil strict refuse `mock`/fallback. Il vise 8 scènes de narration faceless, mais les scènes d’illustration peuvent inclure les personnages officiels.
-- Échec HF, image non valide, doublon binaire, stockage Supabase impossible, voix absente, sous-titres incomplets ou contrôle vidéo échoué ⇒ job **FAILED**, jamais `COMPLETED`.
-- Chaque image acceptée possède un événement de log `AI_IMAGE_GENERATED`, un SHA-256 et une référence Supabase distincts. Les événements `EXISTING_ASSET` et `FALLBACK` sont explicitement différenciés pour les chemins non stricts.
+- Échec du modèle local, image non valide, doublon binaire, stockage Supabase impossible, voix absente, sous-titres incomplets ou contrôle vidéo échoué ⇒ job **FAILED**, jamais `COMPLETED`.
+- Chaque image IA acceptée possède un SHA-256 et une référence Supabase distincts; les scènes conditionnées sont typées `AI_IMAGE_REFERENCED`, les scènes sans référence `AI_IMAGE_GENERATED`. Les événements `EXISTING_ASSET` et `FALLBACK` sont explicitement différenciés pour les chemins non stricts.
 - L’image générée est redimensionnée en PNG 720×1280 après la génération, pour aligner la sortie sur le canevas vertical du rendu.
 - Le renderer anime chaque visuel par un zoom Ken Burns lent et assemble les scènes par coupes nettes; cela évite une seule image immobile, sans altérer les bornes audio/sous-titres.
 - Chaque piste Rémy est décodée et vérifiée contre les silences continus de 2,5 s ou plus avant rendu.
@@ -43,5 +43,5 @@ Les mappings ont été lus dans l’API publique Hugging Face `inferenceProvider
 
 1. Le crédit HF de 0,10 $ est individuel, mensuel, potentiellement déjà consommé par d’autres usages, et HF le dit sujet à changement. Il n’y a donc aucune garantie qu’un appel passe sans achat de crédits.
 2. Les 0,024 $ pour huit images sont une estimation au tarif Fal public de la date de vérification, avant taxes ou différences de routage HF; vérifier le solde et le tarif affiché par HF avant toute production payante.
-3. Le profil strict utilise Tiny-SD T2I. Pour Samuel/Marc, leurs descriptions officielles et leurs tenues sont ajoutées au prompt, mais les images officielles ne sont pas transmises au modèle : la cohérence d’identité n’est donc pas garantie. Une génération image-to-image réellement conditionnée exige un provider configuré, potentiellement payant; elle n’est pas activée par défaut.
+3. Le profil strict peut maintenant transmettre une image officielle à Tiny-SD via son pipeline local img2img. Cela n’assure pas une identité parfaite : une force élevée dévie davantage; à faible force, l’image demeure proche de la référence et les changements de pose/cadrage restent limités. Le pHash/couleur du contrôle qualité n’est pas un vérificateur d’identité sémantique, comme l’a démontré un faux PASS sur un Marc à carnation visiblement incorrecte. La génération complète à 25 steps et une vidéo multi-scènes doivent encore être validées dans le worker de production.
 4. La génération de la vidéo complète dépend aussi de `HF_TOKEN`, des secrets Supabase, de la disponibilité du studio Rémy Neural et du worker FFmpeg. Ces secrets ne doivent jamais être exposés dans ce document, les journaux ou le frontend.

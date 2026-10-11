@@ -55,17 +55,21 @@ def main() -> int:
     steps = int(request.get("steps", 25))
     seed = int(request.get("seed", 1))
     negative_prompt = str(request.get("negative_prompt", NEGATIVE_PROMPT)).strip() or NEGATIVE_PROMPT
+    reference_image_path = request.get("reference_image_path")
+    strength = float(request.get("strength", 0.3))
     if width < 64 or height < 64 or width % 8 or height % 8:
         raise ValueError("Width and height must be positive multiples of 8.")
     if not 1 <= steps <= 50:
         raise ValueError("Inference steps must be between 1 and 50.")
     if not 0 <= seed <= 2**32 - 1:
         raise ValueError("Seed is outside the supported range.")
+    if reference_image_path and not 0 < strength <= 1:
+        raise ValueError("Image-to-image strength must be greater than 0 and at most 1.")
     if not os.environ.get("HF_HUB_DISABLE_IMPLICIT_TOKEN"):
         os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
 
     import torch
-    from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
+    from diffusers import DiffusionPipeline, StableDiffusionImg2ImgPipeline, DPMSolverMultistepScheduler
 
     cpu_count = os.cpu_count() or 1
     torch.set_num_threads(max(1, min(int(os.environ.get("TINY_SD_CPU_THREADS", "4")), cpu_count)))
@@ -73,39 +77,55 @@ def main() -> int:
     torch.set_grad_enabled(False)
 
     started = time.perf_counter()
-    pipe = DiffusionPipeline.from_pretrained(
-        MODEL_ID,
-        torch_dtype=torch.float32,
-        use_safetensors=False,
-        safety_checker=None,
-        requires_safety_checker=False,
-    )
+    common_options = {
+        "torch_dtype": torch.float32,
+        "use_safetensors": False,
+        "safety_checker": None,
+        "requires_safety_checker": False,
+    }
+    if reference_image_path:
+        assets_root = (Path(__file__).resolve().parent.parent / "assets" / "personnages").resolve()
+        reference_path = Path(reference_image_path).resolve(strict=True)
+        if not reference_path.is_file() or os.path.commonpath([str(assets_root), str(reference_path)]) != str(assets_root):
+            raise ValueError("Reference image path must resolve to a bundled official character image.")
+        from PIL import Image, ImageOps
+        with Image.open(reference_path) as source:
+            reference_image = ImageOps.fit(source.convert("RGB"), (width, height), method=Image.Resampling.LANCZOS)
+        pipe = StableDiffusionImg2ImgPipeline.from_pretrained(MODEL_ID, **common_options)
+    else:
+        reference_path = None
+        reference_image = None
+        pipe = DiffusionPipeline.from_pretrained(MODEL_ID, **common_options)
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
     pipe = pipe.to("cpu")
     pipe.set_progress_bar_config(disable=True)
     prompt = compact_prompt(pipe.tokenizer, scene_prompt)
 
     with torch.inference_mode():
-        image = pipe(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            width=width,
-            height=height,
-            num_inference_steps=steps,
-            guidance_scale=7.0,
-            generator=torch.Generator(device="cpu").manual_seed(seed),
-        ).images[0]
+        call = {
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "num_inference_steps": steps,
+            "guidance_scale": 7.0,
+            "generator": torch.Generator(device="cpu").manual_seed(seed),
+        }
+        if reference_image is not None:
+            call.update({"image": reference_image, "strength": strength})
+        image = pipe(**call).images[0]
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, format="PNG", optimize=True)
-    print(json.dumps({
+    print("CONQUISTADOR_RESULT=" + json.dumps({
         "ok": True,
         "model": MODEL_ID,
         "width": image.width,
         "height": image.height,
         "steps": steps,
         "seed": seed,
+        "reference_image_conditioning": reference_image is not None,
+        "reference_image_path": str(reference_path) if reference_path else None,
+        "strength": strength if reference_image is not None else None,
         "elapsed_seconds": round(time.perf_counter() - started, 2),
     }, separators=(",", ":")))
     return 0

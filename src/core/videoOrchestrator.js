@@ -492,7 +492,7 @@ async function stepQualityCheck(job) {
   // (FAIL sur un asset AI_IMAGE_REFERENCED) rend le job NEEDS_REVIEW.
   const strictAssetsOk = !strict || (
     generatedAssets.length === ((job.manifest && job.manifest.scenes) || []).length
-    && generatedAssets.every((asset) => asset.asset_type === 'AI_IMAGE_GENERATED' && asset.storage_url && asset.content_sha256)
+    && generatedAssets.every((asset) => ['AI_IMAGE_GENERATED', 'AI_IMAGE_REFERENCED'].includes(asset.asset_type) && asset.storage_url && asset.content_sha256)
     && new Set(generatedAssets.map((asset) => asset.content_sha256)).size === generatedAssets.length
   );
   const strictRenderOk = !strict || Boolean(job.render.subtitlesBurned && job.subtitles && job.subtitles.complet);
